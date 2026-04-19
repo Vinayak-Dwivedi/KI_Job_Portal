@@ -1,0 +1,27 @@
+﻿Analyzing verification_success_screen.dart...                   
+
+  error - The getter 'photoUrl' isn't defined for the type 'UserModel' - lib\screens\auth\verification_success_screen.dart:103:66 - undefined_getter
+  error - The getter 'photoUrl' isn't defined for the type 'UserModel' - lib\screens\auth\verification_success_screen.dart:103:91 - undefined_getter
+  error - The getter 'photoUrl' isn't defined for the type 'UserModel' - lib\screens\auth\verification_success_screen.dart:104:65 - undefined_getter
+  error - The getter 'photoUrl' isn't defined for the type 'UserModel' - lib\screens\auth\verification_success_screen.dart:106:41 - undefined_getter
+  error - The getter 'photoUrl' isn't defined for the type 'UserModel' - lib\screens\auth\verification_success_screen.dart:106:67 - undefined_getter
+  error - Arguments of a constant creation must be constant expressions - lib\screens\auth\verification_success_screen.dart:150:44 - const_with_non_constant_argument
+  error - The getter 'brightness_raw' isn't defined for the type 'Icons' - lib\screens\auth\verification_success_screen.dart:150:50 - undefined_getter
+
+flutter : 7 issues found. 
+(ran in 7.9s)
+At line:1 char:1
++ flutter analyze lib/screens
+/auth/verification_success_sc
+reen.dart 2>& ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (7 issue  
+  s found. (ran in 7.9s):S   
+ tring) [], RemoteExcepti    
+on
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
