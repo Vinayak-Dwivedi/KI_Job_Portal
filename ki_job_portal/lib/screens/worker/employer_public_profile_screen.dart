@@ -152,13 +152,9 @@ class EmployerPublicProfileScreen extends StatelessWidget {
 
                       const SizedBox(height: 12),
 
-                      SubscriptionGate(
-                        featureName: 'Employer Details',
-                        requiredTier: 'pro',
-                        child: Text(
-                          'This employer is hiring skilled workers. More details coming soon.',
-                          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                        ),
+                      Text(
+                        'This employer is hiring skilled workers. More details coming soon.',
+                        style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                       ),
                     ],
                   ),

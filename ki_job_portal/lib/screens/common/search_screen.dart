@@ -46,6 +46,24 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
         ),
         title: _buildSearchBox(theme),
         actions: [
+          IconButton(
+            icon: Stack(
+              children: [
+                Icon(Icons.tune_rounded, color: ref.watch(searchFiltersProvider).isEmpty ? Colors.grey : AppColors.primary),
+                if (!ref.watch(searchFiltersProvider).isEmpty)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                      constraints: const BoxConstraints(minWidth: 8, minHeight: 8),
+                    ),
+                  ),
+              ],
+            ),
+            onPressed: () => _showFilterSheet(context, theme),
+          ),
           if (query.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.close_rounded, color: Colors.grey),
@@ -82,6 +100,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
           _buildResultsList(results, 'companies', theme),
         ],
       ),
+    );
+  }
+  
+  void _showFilterSheet(BuildContext context, ThemeData theme) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _FilterBottomSheet(theme: theme),
     );
   }
 
@@ -183,7 +210,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
         trailing: Icon(Icons.chevron_right_rounded, color: theme.colorScheme.onSurfaceVariant),
         onTap: () {
           final role = user['role'] ?? (isWorker ? 'worker' : 'employer');
-          context.push('/public-profile/${user['uid']}/$role');
+          context.push('/profile/$role/${user['uid']}');
         },
       ),
     );
@@ -207,6 +234,153 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
           ),
         ],
       ),
+    );
+  }
+}
+
+class _FilterBottomSheet extends ConsumerStatefulWidget {
+  final ThemeData theme;
+  const _FilterBottomSheet({required this.theme});
+
+  @override
+  ConsumerState<_FilterBottomSheet> createState() => _FilterBottomSheetState();
+}
+
+class _FilterBottomSheetState extends ConsumerState<_FilterBottomSheet> {
+  late SearchFilters _tempFilters;
+  late final TextEditingController _locationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tempFilters = ref.read(searchFiltersProvider);
+    _locationController = TextEditingController(text: _tempFilters.location ?? '');
+  }
+
+  @override
+  void dispose() {
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: widget.theme.scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Filters", style: widget.theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+              TextButton(
+                onPressed: () {
+                  ref.read(searchFiltersProvider.notifier).clear();
+                  Navigator.pop(context);
+                },
+                child: const Text("Reset All"),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          
+          // Skill Category
+          const Text("Skill Category", style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          _buildFilterChips(
+            ['Plumber', 'Electrician', 'Carpenter', 'Painter', 'Driver', 'Mason'],
+            _tempFilters.skillType,
+            (val) => setState(() => _tempFilters = _tempFilters.copyWith(skillType: val)),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Experience
+          const Text("Min. Experience (Years)", style: TextStyle(fontWeight: FontWeight.bold)),
+          Slider(
+            value: (_tempFilters.minExperience ?? 0).toDouble(),
+            min: 0,
+            max: 20,
+            divisions: 20,
+            label: "${_tempFilters.minExperience ?? 0} years",
+            onChanged: (val) => setState(() => _tempFilters = _tempFilters.copyWith(minExperience: val.toInt())),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Location
+          const Text("Location", style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _locationController,
+            decoration: InputDecoration(
+              hintText: "Enter city or state",
+              prefixIcon: const Icon(Icons.location_on_outlined),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onChanged: (val) => setState(() => _tempFilters = _tempFilters.copyWith(location: val.isEmpty ? null : val)),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Job Type
+          const Text("Job Type", style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          _buildFilterChips(
+            ['Full-time', 'Part-time', 'Contract', 'Freelance'],
+            _tempFilters.jobType,
+            (val) => setState(() => _tempFilters = _tempFilters.copyWith(jobType: val)),
+          ),
+          
+          const SizedBox(height: 32),
+          
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: () {
+                ref.read(searchFiltersProvider.notifier).updateFilters(_tempFilters);
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text("Apply Filters", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChips(List<String> options, String? selected, Function(String?) onSelected) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: options.map((opt) {
+        final isSelected = opt == selected;
+        return FilterChip(
+          label: Text(opt),
+          selected: isSelected,
+          onSelected: (selected) {
+            onSelected(selected ? opt : null);
+          },
+          selectedColor: AppColors.primary.withOpacity(0.2),
+          checkmarkColor: AppColors.primary,
+          labelStyle: TextStyle(
+            color: isSelected ? AppColors.primary : widget.theme.colorScheme.onSurface,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        );
+      }).toList(),
     );
   }
 }

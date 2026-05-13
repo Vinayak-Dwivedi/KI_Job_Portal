@@ -4,7 +4,7 @@ import { QueryDocumentSnapshot } from "firebase/firestore";
 import { Search, Loader2, Star, Trash2, Download } from "lucide-react";
 
 import { fetchJobs, updateJobStatus, deleteJobPost, type JobData } from "@/lib/api/jobs";
-import { exportToPDF } from "@/lib/exportUtils";
+import { exportToPDF, exportToCSV } from "@/lib/exportUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -62,26 +62,33 @@ export default function Jobs() {
     }
   };
 
-  const handleExportPDF = () => {
-    if (!data?.jobs) return;
-    
-    const columns = [
-      { header: "Title", dataKey: "title" },
-      { header: "Employer", dataKey: "employerName" },
-      { header: "Status", dataKey: "status" },
-      { header: "Featured", dataKey: "isFeatured" },
-      { header: "Location", dataKey: "location" },
-    ];
-
-    const exportData = data.jobs.map(j => ({
-      title: j.title,
-      employerName: j.employerName,
-      status: j.status.toUpperCase(),
-      isFeatured: j.isFeatured ? "Yes" : "No",
-      location: j.location || "N/A",
+  const getExportData = () => {
+    if (!data?.jobs) return [];
+    return data.jobs.map(j => ({
+      Title: j.title,
+      Employer: j.employerName,
+      Worker: j.workerName || "None",
+      Price: j.price || "N/A",
+      Status: j.status.toUpperCase(),
+      AcceptedDate: j.acceptedAt ? new Date(j.acceptedAt.seconds * 1000).toLocaleDateString() : "N/A",
+      Location: j.location || "N/A"
     }));
+  };
 
-    exportToPDF("Job Postings Audit Report", columns, exportData, "jobs_report.pdf");
+  const handleExportPDF = () => {
+    const columns = [
+      { header: "Title", dataKey: "Title" },
+      { header: "Employer", dataKey: "Employer" },
+      { header: "Worker", dataKey: "Worker" },
+      { header: "Price/Salary", dataKey: "Price" },
+      { header: "Status", dataKey: "Status" },
+      { header: "Accepted On", dataKey: "AcceptedDate" },
+    ];
+    exportToPDF("Job Postings & Fulfillment Report", columns, getExportData(), "jobs_audit_report.pdf");
+  };
+
+  const handleExportCSV = () => {
+    exportToCSV(getExportData(), "jobs_audit_report.csv");
   };
 
   const jobs = data?.jobs || [];
@@ -98,9 +105,14 @@ export default function Jobs() {
           <h2 className="text-2xl font-bold tracking-tight">Job Management</h2>
           <p className="text-muted-foreground">Monitor, feature, and close job postings.</p>
         </div>
-        <Button onClick={handleExportPDF} variant="outline" className="gap-2 border-primary/20 hover:bg-primary/10">
-          <Download className="w-4 h-4" /> Export Report
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleExportCSV} variant="outline" className="gap-2 border-emerald-500/20 hover:bg-emerald-500/10 text-emerald-500">
+            <Download className="w-4 h-4" /> Export CSV (Sheet)
+          </Button>
+          <Button onClick={handleExportPDF} variant="outline" className="gap-2 border-primary/20 hover:bg-primary/10">
+            <Download className="w-4 h-4" /> Export PDF
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -145,6 +157,8 @@ export default function Jobs() {
                   <TableRow>
                     <TableHead>Job Role</TableHead>
                     <TableHead>Employer</TableHead>
+                    <TableHead>Worker / Applicant</TableHead>
+                    <TableHead>Budget / Paid</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Featured</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -153,7 +167,7 @@ export default function Jobs() {
                 <TableBody>
                   {filteredJobs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                         No jobs found.
                       </TableCell>
                     </TableRow>
@@ -161,9 +175,16 @@ export default function Jobs() {
                     filteredJobs.map((job) => (
                       <TableRow key={job.id}>
                         <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-medium text-foreground">{job.title}</span>
-                            <span className="text-xs text-muted-foreground truncate max-w-[200px]">{job.description}</span>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-foreground">{job.title}</span>
+                              {job.type === "worker" ? (
+                                <Badge variant="outline" className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border-blue-500/20">Worker</Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 border-orange-500/20">Employer</Badge>
+                              )}
+                            </div>
+                            <span className="text-xs text-muted-foreground truncate max-w-[150px]">{job.description}</span>
                             <span className="text-xs text-primary">{job.location}</span>
                           </div>
                         </TableCell>
@@ -171,8 +192,23 @@ export default function Jobs() {
                           {job.employerName}
                         </TableCell>
                         <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{job.workerName}</span>
+                            {job.acceptedAt && (
+                              <span className="text-[10px] text-muted-foreground">
+                                {new Date(job.acceptedAt.seconds * 1000).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm text-green-500 font-bold">
+                          {job.price}
+                        </TableCell>
+                        <TableCell>
                           {job.status === "open" ? (
                             <Badge variant="success" className="capitalize">{job.status}</Badge>
+                          ) : job.status === "filled" ? (
+                            <Badge variant="default" className="capitalize bg-blue-500/20 text-blue-400 border-blue-500/30">{job.status}</Badge>
                           ) : (
                             <Badge variant="secondary" className="capitalize">{job.status}</Badge>
                           )}

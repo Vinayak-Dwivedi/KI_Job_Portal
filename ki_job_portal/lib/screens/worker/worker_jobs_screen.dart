@@ -86,23 +86,33 @@ class _WorkerJobsScreenState extends ConsumerState<WorkerJobsScreen>
                                 letterSpacing: -0.5)),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: const Color(0xFF2563EB), width: 1.5)),
-                      child: CircleAvatar(
-                        radius: 18,
-                        backgroundColor: const Color(0xFF1E293B),
-                        backgroundImage: worker?.localImageFile != null
-                            ? FileImage(worker!.localImageFile!)
-                            : null,
-                        child: worker?.localImageFile == null
-                            ? const Icon(Icons.person,
-                                color: Color(0xFFE5E7EB), size: 20)
-                            : null,
-                      ),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => context.push('/search'),
+                          icon: const Icon(Icons.search_rounded, color: Color(0xFFE5E7EB)),
+                          tooltip: 'Search Jobs',
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: const Color(0xFF2563EB), width: 1.5)),
+                          child: CircleAvatar(
+                            radius: 18,
+                            backgroundColor: const Color(0xFF1E293B),
+                            backgroundImage: worker?.localImageFile != null
+                                ? FileImage(worker!.localImageFile!)
+                                : null,
+                            child: worker?.localImageFile == null
+                                ? const Icon(Icons.person,
+                                    color: Color(0xFFE5E7EB), size: 20)
+                                : null,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -176,6 +186,50 @@ class _WorkerJobsScreenState extends ConsumerState<WorkerJobsScreen>
             ),
           ),
 
+          // ── Job Filters ──────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: theme.cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: theme.dividerColor),
+                    ),
+                    child: TextField(
+                      onChanged: (val) => ref.read(jobFilterProvider.notifier).updateFilter((s) => s.copyWith(searchQuery: val)),
+                      style: const TextStyle(fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: 'Search jobs, companies...',
+                        hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5), fontSize: 13),
+                        prefixIcon: Icon(Icons.search_rounded, color: theme.colorScheme.onSurfaceVariant, size: 20),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                InkWell(
+                  onTap: () => _showFilterBottomSheet(context),
+                  child: Container(
+                    height: 50,
+                    width: 50,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                    ),
+                    child: const Icon(Icons.tune_rounded, color: AppColors.primary, size: 22),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // ── Tab Views ────────────────────────────────────
           Expanded(
             child: TabBarView(
@@ -190,6 +244,15 @@ class _WorkerJobsScreenState extends ConsumerState<WorkerJobsScreen>
           ),
         ],
       ),
+    );
+  }
+
+  void _showFilterBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const _JobFilterSheet(),
     );
   }
 
@@ -418,6 +481,25 @@ class _WorkerJobsScreenState extends ConsumerState<WorkerJobsScreen>
                       ),
                     ],
                   ),
+                  if (inv['message'] != null && inv['message'].toString().isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        inv['message'],
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 13,
+                          height: 1.4,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ],
                   if (isPending) ...[
                     const SizedBox(height: 16),
                     Row(
@@ -639,6 +721,112 @@ class _SuccessRateCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _JobFilterSheet extends ConsumerWidget {
+  const _JobFilterSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final filter = ref.watch(jobFilterProvider);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.dividerColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text('Filter Jobs', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 24),
+          
+          _filterLabel('Location'),
+          const SizedBox(height: 12),
+          _buildFilterField(
+            initialValue: filter.location,
+            hint: 'City, State or Area',
+            onChanged: (val) => ref.read(jobFilterProvider.notifier).updateFilter((s) => s.copyWith(location: val)),
+            theme: theme,
+          ),
+          
+          const SizedBox(height: 24),
+          _filterLabel('Category'),
+          const SizedBox(height: 12),
+          _buildFilterField(
+            initialValue: filter.category,
+            hint: 'E.g. Electrician, Delivery...',
+            onChanged: (val) => ref.read(jobFilterProvider.notifier).updateFilter((s) => s.copyWith(category: val)),
+            theme: theme,
+          ),
+          
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
+              ),
+              child: const Text('Show Results', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: TextButton(
+              onPressed: () {
+                ref.read(jobFilterProvider.notifier).setFilter(JobFilter());
+                Navigator.pop(context);
+              },
+              child: const Text('Reset All', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterLabel(String label) {
+    return Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF94A3B8)));
+  }
+
+  Widget _buildFilterField({String? initialValue, required String hint, required Function(String) onChanged, required ThemeData theme}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: TextField(
+        onChanged: onChanged,
+        controller: TextEditingController(text: initialValue)..selection = TextSelection.collapsed(offset: initialValue?.length ?? 0),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5), fontSize: 13),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
       ),
     );
   }

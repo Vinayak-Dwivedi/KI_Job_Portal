@@ -17,13 +17,13 @@ export interface UserData {
 
 const PAGE_SIZE = 20;
 
-export const createPersonalNotification = async (targetUid: string, title: string, message: string, type: string = "info") => {
+export const createPersonalNotification = async (targetUid: string, title: string, message: string, type: string = "general") => {
   try {
-    await addDoc(collection(db, "announcements"), {
+    await addDoc(collection(db, "users", targetUid, "notifications"), {
       title,
-      message,
-      targetUid,
+      body: message,
       type,
+      isRead: false,
       createdAt: Timestamp.now(),
     });
     return true;

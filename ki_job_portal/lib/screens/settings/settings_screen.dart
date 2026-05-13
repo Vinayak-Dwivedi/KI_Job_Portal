@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../core/theme/app_colors.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -15,7 +17,7 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+        title: Text(AppLocalizations.of(context)!.settings, style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: -0.5)),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -29,88 +31,96 @@ class SettingsScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader('Account & Preferences', theme),
+            _buildSectionHeader(AppLocalizations.of(context)!.accountPreferences, theme),
             const SizedBox(height: 12),
             _SettingsCard(
               children: [
                 _SettingsTile(
                   icon: Icons.verified_user_outlined,
-                  title: 'Verification & Documents',
-                  subtitle: 'Aadhar, ID, and certificates',
+                  title: AppLocalizations.of(context)!.verificationDocuments,
+                  subtitle: AppLocalizations.of(context)!.verificationSubtitle,
                   onTap: () => context.push('/settings/verification'),
                   theme: theme,
                 ),
                 _SettingsTile(
                   icon: Icons.tune_rounded,
-                  title: 'Role Preferences',
-                  subtitle: user?.role == 'employer' ? 'Hiring needs' : 'Job preferences',
+                  title: AppLocalizations.of(context)!.rolePreferences,
+                  subtitle: user?.role == 'employer' ? AppLocalizations.of(context)!.hiringNeeds : AppLocalizations.of(context)!.jobPreferences,
                   onTap: () => context.push('/settings/preferences'),
                   theme: theme,
                 ),
                 _SettingsTile(
                   icon: Icons.translate_rounded,
-                  title: 'Language',
-                  subtitle: 'Select your preferred language',
+                  title: AppLocalizations.of(context)!.language,
+                  subtitle: AppLocalizations.of(context)!.languageSubtitle,
                   onTap: () => context.push('/settings/language'),
                   theme: theme,
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            _buildSectionHeader('Security & Privacy', theme),
+            _buildSectionHeader(AppLocalizations.of(context)!.securityPrivacy, theme),
             const SizedBox(height: 12),
             _SettingsCard(
               children: [
                 _SettingsTile(
                   icon: Icons.security_rounded,
-                  title: 'Privacy Controls',
-                  subtitle: 'Profile and contact visibility',
+                  title: AppLocalizations.of(context)!.privacyControls,
+                  subtitle: AppLocalizations.of(context)!.privacySubtitle,
                   onTap: () => context.push('/settings/privacy'),
                   theme: theme,
                 ),
                 _SettingsTile(
                   icon: Icons.block_rounded,
-                  title: 'Blocked Users',
-                  subtitle: 'Manage blocked accounts',
+                  title: AppLocalizations.of(context)!.blockedUsers,
+                  subtitle: AppLocalizations.of(context)!.blockedUsersSubtitle,
                   onTap: () => context.push('/settings/blocked'),
                   theme: theme,
                 ),
                 _SettingsTile(
                   icon: Icons.notifications_none_rounded,
-                  title: 'Notifications',
-                  subtitle: 'Manage alerts and messages',
+                  title: AppLocalizations.of(context)!.notifications,
+                  subtitle: AppLocalizations.of(context)!.notificationsSubtitle,
                   onTap: () => context.push('/settings/notifications'),
                   theme: theme,
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            _buildSectionHeader('General', theme),
+            _buildSectionHeader(AppLocalizations.of(context)!.general, theme),
             const SizedBox(height: 12),
             _SettingsCard(
               children: [
                 _SettingsTile(
                   icon: Icons.help_outline_rounded,
-                  title: 'Help & Support',
-                  subtitle: 'FAQ, contact us',
+                  title: AppLocalizations.of(context)!.helpSupport,
+                  subtitle: AppLocalizations.of(context)!.helpSupportSubtitle,
                   onTap: () => context.push('/settings/support'),
+                  theme: theme,
+                ),
+                _SettingsToggleTile(
+                  icon: Icons.dark_mode_outlined,
+                  title: AppLocalizations.of(context)!.darkMode,
+                  subtitle: AppLocalizations.of(context)!.darkModeSubtitle,
+                  value: ref.watch(themeModeProvider) == ThemeMode.dark,
+                  onChanged: (val) => ref.read(themeModeProvider.notifier).toggleTheme(),
                   theme: theme,
                 ),
                 _SettingsTile(
                   icon: Icons.info_outline_rounded,
-                  title: 'About',
-                  subtitle: 'Terms, Privacy, Version 1.0.0',
+                  title: AppLocalizations.of(context)!.about,
+                  subtitle: AppLocalizations.of(context)!.aboutSubtitle,
                   onTap: () {
                     showDialog(
                       context: context,
                       builder: (ctx) => AlertDialog(
                         backgroundColor: theme.cardColor,
-                        title: const Text('About KI Job Portal', style: TextStyle(fontWeight: FontWeight.bold)),
-                        content: const Text('Version: 1.0.0\n\nThe most comprehensive job portal for blue and white collar workers.\n\n© 2026 KI Job Portal. All rights reserved.'),
+                        title: Text(AppLocalizations.of(context)!.aboutApp, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        content: Text(AppLocalizations.of(context)!.aboutContent),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(ctx),
-                            child: const Text('Close'),
+                            child: Text(AppLocalizations.of(context)!.close),
                           )
                         ],
                       ),
@@ -131,12 +141,12 @@ class SettingsScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: AppColors.error.withOpacity(0.2)),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.logout_rounded, color: AppColors.error, size: 20),
-                      SizedBox(width: 12),
-                      Text('Log Out', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w900, fontSize: 16)),
+                      const Icon(Icons.logout_rounded, color: AppColors.error, size: 20),
+                      const SizedBox(width: 12),
+                      Text(AppLocalizations.of(context)!.logout, style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w900, fontSize: 16)),
                     ],
                   ),
                 ),
@@ -185,9 +195,9 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text('Confirm Logout', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+              Text(AppLocalizations.of(context)!.confirmLogout, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
               const SizedBox(height: 12),
-              Text('Are you sure you want to log out of your account?',
+              Text(AppLocalizations.of(context)!.logoutMessage,
                   textAlign: TextAlign.center,
                   style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
               const SizedBox(height: 32),
@@ -200,7 +210,7 @@ class SettingsScreen extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      child: const Text('Cancel'),
+                      child: Text(AppLocalizations.of(context)!.cancel),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -217,7 +227,7 @@ class SettingsScreen extends ConsumerWidget {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         elevation: 0,
                       ),
-                      child: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text(AppLocalizations.of(context)!.logout, style: const TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -226,6 +236,72 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SettingsToggleTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final ThemeData theme;
+
+  const _SettingsToggleTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: theme.colorScheme.primary, size: 22),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+            activeColor: theme.colorScheme.primary,
+          ),
+        ],
       ),
     );
   }

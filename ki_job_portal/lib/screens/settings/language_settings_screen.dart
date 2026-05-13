@@ -1,29 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart';
+// Trigger re-analysis
 import '../../core/theme/app_colors.dart';
+import '../../providers/localization_provider.dart';
 
-class LanguageSettingsScreen extends StatefulWidget {
+class LanguageSettingsScreen extends ConsumerStatefulWidget {
   const LanguageSettingsScreen({super.key});
 
   @override
-  State<LanguageSettingsScreen> createState() => _LanguageSettingsScreenState();
+  ConsumerState<LanguageSettingsScreen> createState() => _LanguageSettingsScreenState();
 }
 
-class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
-  String _selectedLang = 'English';
-
+class _LanguageSettingsScreenState extends ConsumerState<LanguageSettingsScreen> {
   final List<Map<String, String>> _languages = [
-    {'name': 'English', 'native': 'English'},
-    {'name': 'Hindi', 'native': 'हिन्दी'},
+    {'name': 'English', 'native': 'English', 'code': 'en'},
+    {'name': 'Hindi', 'native': 'हिन्दी', 'code': 'hi'},
   ];
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final currentLocale = ref.watch(localizationProvider);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Language Selection', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+        title: Text(AppLocalizations.of(context)!.languageSelection, style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: -0.5)),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -38,10 +41,10 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
         separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           final lang = _languages[index];
-          final isSelected = _selectedLang == lang['name'];
+          final isSelected = currentLocale.languageCode == lang['code'];
 
           return GestureDetector(
-            onTap: () => setState(() => _selectedLang = lang['name']!),
+            onTap: () => ref.read(localizationProvider.notifier).setLanguage(lang['code']!),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.all(16),
@@ -119,7 +122,7 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
               elevation: 4,
               shadowColor: theme.colorScheme.primary.withOpacity(0.4),
             ),
-            child: const Text('Save Selection', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            child: Text(AppLocalizations.of(context)!.confirm, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
           ),
         ),
       ),

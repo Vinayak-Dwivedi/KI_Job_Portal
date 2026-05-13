@@ -157,7 +157,15 @@ export default function UserProfile() {
                 <div className="relative mb-6">
                   <div className="h-32 w-32 rounded-[2.5rem] bg-gradient-to-br from-primary/20 to-primary/5 p-1">
                     <div className="h-full w-full rounded-[2.2rem] bg-background flex items-center justify-center border border-white/5 relative overflow-hidden group-hover:scale-105 transition-transform duration-500">
-                      <User className="h-16 w-16 text-primary/40" />
+                      {user.profilePhotoUrl ? (
+                        <img 
+                          src={user.profilePhotoUrl} 
+                          alt={user.name} 
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <User className="h-16 w-16 text-primary/40" />
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </div>
@@ -322,24 +330,60 @@ export default function UserProfile() {
                                       </div>
                                    </div>
                                    {user.role === 'worker' && (
-                                     <div className="space-y-2">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-30">Skill Inventory</p>
-                                        <div className="flex flex-wrap gap-2">
-                                          {((user as any).skills || []).length > 0 
-                                            ? (user as any).skills.map((s: string) => <Badge key={s} variant="outline" className="rounded-lg border-white/10 glass bg-white/5">{s}</Badge>) 
-                                            : <span className="text-xs text-muted-foreground italic">No specialized skills listed.</span>
-                                          }
-                                        </div>
-                                     </div>
+                                     <>
+                                       <div className="space-y-2">
+                                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-30">Skill Inventory</p>
+                                          <div className="flex flex-wrap gap-2">
+                                            {((user as any).skills || []).length > 0 
+                                              ? (user as any).skills.map((s: string) => <Badge key={s} variant="outline" className="rounded-lg border-white/10 glass bg-white/5">{s}</Badge>) 
+                                              : <span className="text-xs text-muted-foreground italic">No specialized skills listed.</span>
+                                            }
+                                          </div>
+                                       </div>
+                                       <div className="space-y-2 mt-4">
+                                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-30">Verification Details</p>
+                                            <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
+                                              <span className="opacity-50 text-[10px] block uppercase font-bold tracking-widest mb-1">Aadhaar Verification</span>
+                                              <span className="text-primary font-mono">{(user as any).aadhaarNumber || 'NOT PROVIDED'}</span>
+                                            </div>
+                                            <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
+                                              <span className="opacity-50 text-[10px] block uppercase font-bold tracking-widest mb-1">Gender / Nationality</span>
+                                              <span>{(user as any).gender || 'N/A'} • {(user as any).nationality || 'N/A'}</span>
+                                            </div>
+                                            <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
+                                              <span className="opacity-50 text-[10px] block uppercase font-bold tracking-widest mb-1">Emergency Contact</span>
+                                              <span>{(user as any).emergencyContact || 'N/A'}</span>
+                                            </div>
+                                            <div className="p-3 rounded-2xl bg-white/5 border border-white/5 col-span-2">
+                                              <span className="opacity-50 text-[10px] block uppercase font-bold tracking-widest mb-1">Permanent Address</span>
+                                              <span className="text-xs opacity-80">{(user as any).permanentAddress || 'N/A'}</span>
+                                            </div>
+                                       </div>
+                                     </>
                                    )}
                                    {user.role === 'employer' && (
-                                     <div className="space-y-2">
-                                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-30">Corporate Entity</p>
-                                        <div className="flex items-center gap-3 py-3 px-4 rounded-2xl bg-white/[0.03] border border-white/5 text-sm">
-                                           <Building className="w-4 h-4 text-emerald-500/60" />
-                                           {(user as any).companyName || 'Private Professional'}
-                                        </div>
-                                     </div>
+                                     <>
+                                       <div className="space-y-2">
+                                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-30">Corporate Entity</p>
+                                          <div className="flex items-center gap-3 py-3 px-4 rounded-2xl bg-white/[0.03] border border-white/5 text-sm">
+                                             <Building className="w-4 h-4 text-emerald-500/60" />
+                                             {(user as any).companyName || 'Private Professional'}
+                                          </div>
+                                       </div>
+                                       <div className="space-y-2 mt-4">
+                                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-30">Verification Details</p>
+                                          <div className="grid grid-cols-2 gap-4 text-sm pt-2">
+                                            <div>
+                                              <span className="opacity-50 text-[10px] block uppercase">Reg. Number</span>
+                                              <span>{(user as any).companyRegistrationNumber || 'N/A'}</span>
+                                            </div>
+                                            <div>
+                                              <span className="opacity-50 text-[10px] block uppercase">GST Number</span>
+                                              <span>{(user as any).gstNumber || 'N/A'}</span>
+                                            </div>
+                                          </div>
+                                       </div>
+                                     </>
                                    )}
                                 </div>
                               </>
@@ -381,7 +425,7 @@ export default function UserProfile() {
                                       </Button>
                                    </div>
                                 </div>
-                                <p className="text-sm leading-relaxed opacity-90 line-clamp-3">{post.content || <span className="italic opacity-40">Attachment only post</span>}</p>
+                                <p className="text-sm leading-relaxed opacity-90 line-clamp-3">{post.displayContent || <span className="italic opacity-40">Attachment only post</span>}</p>
                              </div>
                              <div className="flex justify-between items-center pt-6">
                                 <span className="text-[10px] font-mono opacity-30">{post.createdAt?.toDate ? post.createdAt.toDate().toLocaleString() : 'Recent'}</span>
@@ -410,6 +454,7 @@ export default function UserProfile() {
                            <TableHeader className="bg-white/[0.02]">
                               <TableRow className="border-white/5 hover:bg-transparent">
                                  <TableHead className="font-mono text-[10px] uppercase tracking-widest py-4 pl-8">Job Architecture</TableHead>
+                                 <TableHead className="font-mono text-[10px] uppercase tracking-widest py-4">Budget / Salary</TableHead>
                                  <TableHead className="font-mono text-[10px] uppercase tracking-widest py-4">Location</TableHead>
                                  <TableHead className="font-mono text-[10px] uppercase tracking-widest py-4">State</TableHead>
                                  <TableHead className="font-mono text-[10px] uppercase tracking-widest py-4 text-right pr-8">Link</TableHead>
@@ -420,16 +465,19 @@ export default function UserProfile() {
                                  <TableRow key={job.id} className="border-white/5 hover:bg-white/[0.02] group transition-colors">
                                     <TableCell className="font-medium py-6 pl-8">
                                        <div className="flex flex-col">
-                                          <span>{job.title}</span>
-                                          <span className="text-[10px] opacity-40 uppercase tracking-tighter mt-1">{job.category}</span>
+                                          <span>{job.jobTitle || job.title}</span>
+                                          <span className="text-[10px] opacity-40 uppercase tracking-tighter mt-1">{job.jobExperience || 'Standard Experience'}</span>
                                        </div>
+                                    </TableCell>
+                                    <TableCell className="font-mono text-emerald-500 text-sm">
+                                       {job.jobSalary || 'Negotiable'}
                                     </TableCell>
                                     <TableCell className="text-xs opacity-60">
                                        {typeof job.location === 'object' ? job.location?.address : job.location}
                                     </TableCell>
                                     <TableCell>
-                                       <Badge className={`rounded-lg uppercase text-[9px] tracking-widest border-none ${job.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-muted-foreground'}`}>
-                                          {job.status}
+                                       <Badge className={`rounded-lg uppercase text-[9px] tracking-widest border-none ${job.hiringStatus === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-muted-foreground'}`}>
+                                          {job.hiringStatus || 'active'}
                                        </Badge>
                                     </TableCell>
                                     <TableCell className="text-right pr-8">

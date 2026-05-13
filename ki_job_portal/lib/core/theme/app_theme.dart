@@ -36,6 +36,11 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
       ),
+      cardTheme: CardThemeData(
+        color: AppColors.surfaceContainerLowest,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
       filledButtonTheme: _filledButtonTheme,
     );
   }
@@ -76,7 +81,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: AppColors.darkSurfaceContainer,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       filledButtonTheme: _filledButtonTheme,
     );
@@ -85,7 +90,7 @@ class AppTheme {
   static FilledButtonThemeData get _filledButtonTheme {
     return FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(vertical: 16),
         textStyle: GoogleFonts.plusJakartaSans(
           fontWeight: FontWeight.bold,

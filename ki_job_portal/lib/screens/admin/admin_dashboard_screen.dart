@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/services/analytics_service.dart';
 import '../../core/services/pdf_export_service.dart';
+import '../../screens/admin/admin_promotions_screen.dart';
+import '../../screens/admin/admin_plans_screen.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -50,6 +52,10 @@ class AdminDashboardScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 _buildActionCard(context, 'Manage & Ban Users', Icons.group_remove, () => context.push('/admin/users')),
                 const SizedBox(height: 12),
+                _buildActionCard(context, 'Manage Promotions (Ads/Plans)', Icons.campaign, () => context.push('/admin/promotions')),
+                const SizedBox(height: 12),
+                _buildActionCard(context, 'Manage Plans & Credit Packs', Icons.subscriptions, () => context.push('/admin/plans')),
+                const SizedBox(height: 12),
                 _buildActionCard(context, 'Export Analytics Report (PDF)', Icons.picture_as_pdf, () async {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Generating PDF...')));
                   await PdfExportService.exportAnalyticsReport(stats);
@@ -71,14 +77,14 @@ class AdminDashboardScreen extends ConsumerWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(width: 20),

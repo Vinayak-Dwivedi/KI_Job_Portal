@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:photo_view/photo_view.dart';
-import 'package:photo_view/photo_view_gallery.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
+import 'package:go_router/go_router.dart';
+import '../../screens/feed/media_viewer_screen.dart';
 
 class PostMediaGrid extends StatelessWidget {
   final List<Map<String, dynamic>> media;
+  final String? postId;
 
-  const PostMediaGrid({super.key, required this.media});
+  const PostMediaGrid({super.key, required this.media, this.postId});
 
   @override
   Widget build(BuildContext context) {
@@ -86,69 +87,60 @@ class PostMediaGrid extends StatelessWidget {
       type = 'video';
     }
 
-    if (type == 'video') {
-      return SizedBox(
-        height: height,
-        width: double.infinity,
-        child: FeedVideoPlayer(url: url),
-      );
-    }
-
     return GestureDetector(
-      onTap: () => _openGallery(context, index),
+      onTap: () => _openMediaViewer(context, index),
       child: SizedBox(
         height: height,
         width: double.infinity,
-        child: CachedNetworkImage(
-          imageUrl: url,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(
-            color: Colors.grey[200],
-            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          ),
-          errorWidget: (context, url, error) => Container(
-            color: Colors.grey[200],
-            child: const Icon(Icons.error, color: Colors.grey),
-          ),
-        ),
+        child: type == 'video' 
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  FeedVideoPlayer(url: url),
+                  Container(
+                    color: Colors.black.withOpacity(0.2),
+                    child: const Center(
+                      child: Icon(Icons.play_circle_outline, color: Colors.white, size: 40),
+                    ),
+                  ),
+                ],
+              )
+            : CachedNetworkImage(
+                imageUrl: url,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  color: Colors.grey[200],
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  color: Colors.grey[200],
+                  child: const Icon(Icons.error, color: Colors.grey),
+                ),
+              ),
       ),
     );
   }
 
-  void _openGallery(BuildContext context, int initialIndex) {
-    // Only open gallery for images.
-    final images = media.where((m) => m['type'] != 'video').toList();
-    if (images.isEmpty) return;
-    
-    // Find the new index of the tapped image among only the images
-    final currentUrl = media[initialIndex]['url'];
-    int parsedInitialIndex = images.indexWhere((m) => m['url'] == currentUrl);
-    if (parsedInitialIndex == -1) parsedInitialIndex = 0;
+  void _openMediaViewer(BuildContext context, int initialIndex) {
+    String type = media[initialIndex]['type'] ?? 'image';
+    String url = media[initialIndex]['url'] ?? '';
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(
-            backgroundColor: Colors.black,
-            iconTheme: const IconThemeData(color: Colors.white),
-          ),
-          body: PhotoViewGallery.builder(
-            itemCount: images.length,
-            builder: (context, index) {
-              return PhotoViewGalleryPageOptions(
-                imageProvider: CachedNetworkImageProvider(images[index]['url']),
-                initialScale: PhotoViewComputedScale.contained,
-                heroAttributes: PhotoViewHeroAttributes(tag: images[index]['url']),
-              );
-            },
-            pageController: PageController(initialPage: parsedInitialIndex),
-            scrollPhysics: const BouncingScrollPhysics(),
-            backgroundDecoration: const BoxDecoration(color: Colors.black),
+    if (type == 'image' && ['mp4', 'mov', 'avi', 'mkv', 'webm'].any((ext) => url.toLowerCase().contains('.$ext?') || url.toLowerCase().endsWith('.$ext'))) {
+      type = 'video';
+    }
+
+    if (type == 'video' && postId != null) {
+      context.push('/reels', extra: {'postId': postId});
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => MediaViewerScreen(
+            media: media,
+            initialIndex: initialIndex,
           ),
         ),
-      ),
-    );
+      );
+    }
   }
 }
 
@@ -179,7 +171,8 @@ class _FeedVideoPlayerState extends State<FeedVideoPlayer> {
         videoPlayerController: _videoPlayerController,
         autoPlay: false,
         looping: false,
-        showControls: true,
+        showControls: false, // Don't show controls in feed
+        allowFullScreen: false,
         materialProgressColors: ChewieProgressColors(
           playedColor: Colors.amber,
           handleColor: Colors.amber,
@@ -202,10 +195,12 @@ class _FeedVideoPlayerState extends State<FeedVideoPlayer> {
   @override
   Widget build(BuildContext context) {
     if (_chewieController != null && _chewieController!.videoPlayerController.value.isInitialized) {
-      return Container(
-        color: Colors.black,
-        child: Chewie(
-          controller: _chewieController!,
+      return IgnorePointer( // Prevent interaction with the inline video so tap goes to GestureDetector
+        child: Container(
+          color: Colors.black,
+          child: Chewie(
+            controller: _chewieController!,
+          ),
         ),
       );
     } else {

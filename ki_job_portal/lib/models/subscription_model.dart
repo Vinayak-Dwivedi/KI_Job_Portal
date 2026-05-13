@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'subscription_plan_model.dart';
 
 class SubscriptionTier {
   static const free = 'free';
@@ -8,11 +9,25 @@ class SubscriptionTier {
 
 class SubscriptionModel {
   final String userId;
-  final String currentTier; // 'free', 'pro', 'elite'
+  final String currentTier;
   final DateTime? validUntil;
+
+  // ── Legacy daily limit (kept for backward compat) ─────────────────────────
   final int maxApplicationsPerDay;
   final int usedApplicationsToday;
   final DateTime? lastApplicationDate;
+
+  // ── Limit type ────────────────────────────────────────────────────────────
+  /// 'credits' or 'limits' — copied from the plan at purchase time
+  final String limitType;
+
+  // ── Period-based quotas (used when limitType == 'limits') ─────────────────
+  final int? maxContactUnlocks;
+  final int usedContactUnlocks;
+  final int? maxJobApplications;
+  final int usedJobApplications;
+  final int? maxHires;
+  final int usedHires;
 
   SubscriptionModel({
     required this.userId,
@@ -21,6 +36,13 @@ class SubscriptionModel {
     this.maxApplicationsPerDay = 3,
     this.usedApplicationsToday = 0,
     this.lastApplicationDate,
+    this.limitType = kLimitTypeLimits,
+    this.maxContactUnlocks,
+    this.usedContactUnlocks = 0,
+    this.maxJobApplications,
+    this.usedJobApplications = 0,
+    this.maxHires,
+    this.usedHires = 0,
   });
 
   bool get isActive {
@@ -30,18 +52,53 @@ class SubscriptionModel {
   }
 
   bool get canApplyForJob {
-    if (currentTier == SubscriptionTier.elite) return true; // Unlimited? Assuming Elite is unlimited or higher
-    
-    // Reset used counter if it's a new day
-    if (lastApplicationDate != null) {
-      final now = DateTime.now();
-      if (now.day != lastApplicationDate!.day || 
-          now.month != lastApplicationDate!.month || 
-          now.year != lastApplicationDate!.year) {
-        return true; 
-      }
-    }
-    return usedApplicationsToday < maxApplicationsPerDay;
+    if (!isActive) return false;
+    if (limitType == kLimitTypeCredits) return true; // Credits mode — no application limit
+    if (maxJobApplications == null) return true; // null = unlimited
+    return usedJobApplications < maxJobApplications!;
+  }
+
+  bool get canUnlockContact {
+    if (!isActive) return false;
+    if (limitType == kLimitTypeCredits) return true;
+    if (maxContactUnlocks == null) return true;
+    return usedContactUnlocks < maxContactUnlocks!;
+  }
+
+  bool get canHireWorker {
+    if (!isActive) return false;
+    if (limitType == kLimitTypeCredits) return true;
+    if (maxHires == null) return true;
+    return usedHires < maxHires!;
+  }
+
+  int get contactUnlocksRemaining {
+    if (maxContactUnlocks == null) return 999999;
+    return (maxContactUnlocks! - usedContactUnlocks).clamp(0, maxContactUnlocks!);
+  }
+
+  int get jobApplicationsRemaining {
+    if (maxJobApplications == null) return 999999;
+    return (maxJobApplications! - usedJobApplications).clamp(0, maxJobApplications!);
+  }
+
+  int get hiresRemaining {
+    if (maxHires == null) return 999999;
+    return (maxHires! - usedHires).clamp(0, maxHires!);
+  }
+
+  int get daysRemaining {
+    if (validUntil == null) return 0;
+    final diff = validUntil!.difference(DateTime.now());
+    return diff.inDays;
+  }
+
+  String get validityString {
+    if (validUntil == null) return "Expired";
+    final days = daysRemaining;
+    if (days < 0) return "Expired";
+    if (days == 0) return "Expires today!";
+    return "$days days remaining";
   }
 
   factory SubscriptionModel.fromMap(Map<String, dynamic> data) {
@@ -52,6 +109,13 @@ class SubscriptionModel {
       maxApplicationsPerDay: data['maxApplicationsPerDay'] ?? 3,
       usedApplicationsToday: data['usedApplicationsToday'] ?? 0,
       lastApplicationDate: (data['lastApplicationDate'] as Timestamp?)?.toDate(),
+      limitType: data['limitType'] ?? kLimitTypeLimits,
+      maxContactUnlocks: data['maxContactUnlocks'] as int?,
+      usedContactUnlocks: data['usedContactUnlocks'] ?? 0,
+      maxJobApplications: data['maxJobApplications'] as int?,
+      usedJobApplications: data['usedJobApplications'] ?? 0,
+      maxHires: data['maxHires'] as int?,
+      usedHires: data['usedHires'] ?? 0,
     );
   }
 
@@ -63,6 +127,13 @@ class SubscriptionModel {
       'maxApplicationsPerDay': maxApplicationsPerDay,
       'usedApplicationsToday': usedApplicationsToday,
       'lastApplicationDate': lastApplicationDate != null ? Timestamp.fromDate(lastApplicationDate!) : null,
+      'limitType': limitType,
+      if (maxContactUnlocks != null) 'maxContactUnlocks': maxContactUnlocks,
+      'usedContactUnlocks': usedContactUnlocks,
+      if (maxJobApplications != null) 'maxJobApplications': maxJobApplications,
+      'usedJobApplications': usedJobApplications,
+      if (maxHires != null) 'maxHires': maxHires,
+      'usedHires': usedHires,
     };
   }
 }

@@ -41,6 +41,14 @@ class EmployerMyJobsScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
+        actions: [
+          IconButton(
+            onPressed: () => context.push('/search'),
+            icon: const Icon(Icons.search_rounded),
+            tooltip: 'Search Jobs',
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: myJobsAsyncValue.when(
         data: (jobs) {
@@ -134,7 +142,7 @@ class _EmployerJobCard extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Boost this Job Post?'),
         content: const Text(
-            'This will deduct 50 credits and feature your job at the top of the feed for 7 days.'),
+            'This will deduct 80 credits and feature your job at the top of the feed for 24 hours.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -144,7 +152,7 @@ class _EmployerJobCard extends ConsumerWidget {
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white),
-            child: const Text('Boost — 50 Credits'),
+            child: const Text('Boost — 80 Credits'),
           ),
         ],
       ),
@@ -157,7 +165,7 @@ class _EmployerJobCard extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Job is now featured for 7 days!'),
+            content: Text('✅ Job is now featured for 24 hours!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -402,7 +410,7 @@ class _EmployerJobCard extends ConsumerWidget {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () =>
-                            context.push('/job/$postId'),
+                            context.push('/job/$postId/applicants'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: theme.colorScheme.primary,
                           foregroundColor: Colors.white,
@@ -425,7 +433,7 @@ class _EmployerJobCard extends ConsumerWidget {
                       _ActionIcon(
                         icon: Icons.bolt_rounded,
                         color: Colors.amber,
-                        tooltip: 'Boost — 50 Credits',
+                        tooltip: 'Boost — 80 Credits',
                         onTap: () => _boostPost(context, ref, postId),
                       ),
 
@@ -465,9 +473,31 @@ class _EmployerJobCard extends ConsumerWidget {
                                 SizedBox(width: 8),
                                 Text('Mark as Filled')
                               ])),
+                        const PopupMenuDivider(),
+                        const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(children: [
+                              Icon(Icons.edit_outlined, color: Colors.blue),
+                              SizedBox(width: 8),
+                              Text('Edit Post')
+                            ])),
+                        const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(children: [
+                              Icon(Icons.delete_outline_rounded, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text('Delete Post')
+                            ])),
                       ],
-                      onSelected: (val) =>
-                          _changeStatus(context, postId, val),
+                      onSelected: (val) {
+                        if (val == 'edit') {
+                          context.push('/feed/create', extra: job);
+                        } else if (val == 'delete') {
+                          _deleteJob(context, postId);
+                        } else {
+                          _changeStatus(context, postId, val);
+                        }
+                      },
                     ),
                   ],
                 ),
@@ -477,6 +507,31 @@ class _EmployerJobCard extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _deleteJob(BuildContext context, String postId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Job Post?'),
+        content: const Text('This action cannot be undone and will remove all applications for this job.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await PostService.deletePost(postId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Job post deleted.')));
+      }
+    }
   }
 }
 

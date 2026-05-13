@@ -33,25 +33,30 @@ export const fetchUserDetail = async (uid: string): Promise<UserData | null> => 
 
 export const fetchUserActivity = async (uid: string): Promise<UserActivity> => {
   try {
-    // Fetch Posts - removed orderBy to avoid index requirement
+    // Fetch everything from 'posts' for this user
     const postsQuery = query(
       collection(db, "posts"),
       where("uid", "==", uid)
     );
     const postsSnap = await getDocs(postsQuery);
-    const posts = postsSnap.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
-      .sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    
+    const allActivity = postsSnap.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        // Map 'text' to 'content' for the UI component if needed, 
+        // but we'll handle it in the TSX for better clarity.
+        displayContent: data.text || data.jobTitle || data.description || "No text content",
+        type: data.isJobPost ? "Job Posting" : (data.isAvailabilityPost ? "Work Profile" : "Social Post")
+      };
+    }) as any[];
+    
+    allActivity.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
-    // Fetch Jobs (if Employer) - removed orderBy to avoid index requirement
-    const jobsQuery = query(
-      collection(db, "jobs"),
-      where("uid", "==", uid)
-    );
-    const jobsSnap = await getDocs(jobsQuery);
-    const jobs = jobsSnap.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
-      .sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    // Separate them for the tabs
+    const posts = allActivity.filter(p => !p.isJobPost);
+    const jobs = allActivity.filter(p => p.isJobPost);
 
     return { posts, jobs };
   } catch (error) {

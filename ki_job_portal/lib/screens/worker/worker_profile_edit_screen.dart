@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/worker_provider.dart';
+import '../../widgets/common/location_picker_sheet.dart';
+import '../../core/services/location_service.dart';
 
 class WorkerProfileEditScreen extends ConsumerStatefulWidget {
   const WorkerProfileEditScreen({super.key});
@@ -15,7 +17,13 @@ class _WorkerProfileEditScreenState extends ConsumerState<WorkerProfileEditScree
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
+  final _locationCtrl = TextEditingController();
+  final _subLocationCtrl = TextEditingController();
   double _experienceYears = 8.0;
+  double? _latitude;
+  double? _longitude;
+  bool _isDetectingLocation = false;
+  bool _isAutoDetected = false;
 
   @override
   void initState() {
@@ -25,6 +33,10 @@ class _WorkerProfileEditScreenState extends ConsumerState<WorkerProfileEditScree
       _nameCtrl.text = worker.name;
       _phoneCtrl.text = worker.phone;
       _emailCtrl.text = 'rajesh.kumar@worker.com'; // Mock email
+      _locationCtrl.text = worker.location;
+      _subLocationCtrl.text = worker.subLocation ?? '';
+      _latitude = worker.latitude;
+      _longitude = worker.longitude;
     }
   }
 
@@ -32,13 +44,53 @@ class _WorkerProfileEditScreenState extends ConsumerState<WorkerProfileEditScree
     final worker = ref.read(workerProvider);
     if (worker != null) {
       ref.read(workerProvider.notifier).updateWorker(
-        worker.copyWith(name: _nameCtrl.text, phone: _phoneCtrl.text),
+        worker.copyWith(
+          name: _nameCtrl.text, 
+          phone: _phoneCtrl.text, 
+          location: _locationCtrl.text,
+          subLocation: _subLocationCtrl.text,
+          latitude: _latitude,
+          longitude: _longitude,
+        ),
       );
     }
     context.pop();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Profile updated!'), backgroundColor: AppColors.secondary),
     );
+  }
+
+  Future<void> _autoDetectLocation() async {
+    setState(() => _isDetectingLocation = true);
+    try {
+      final position = await LocationService.getCurrentLocation();
+      if (position != null) {
+        final locationData = await LocationService.getLocationFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+
+        if (locationData != null && mounted) {
+          setState(() {
+            _locationCtrl.text = locationData['fullLocation'] ?? locationData['city'];
+            _subLocationCtrl.text = locationData['subLocation'];
+            _latitude = locationData['latitude'];
+            _longitude = locationData['longitude'];
+            _isAutoDetected = true;
+          });
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Enable location for auto-fill.')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Error auto-detecting location: $e");
+    } finally {
+      if (mounted) setState(() => _isDetectingLocation = false);
+    }
   }
 
   @override
@@ -184,35 +236,92 @@ class _WorkerProfileEditScreenState extends ConsumerState<WorkerProfileEditScree
               ],
             ),
             const SizedBox(height: 24),
-            const Text('SERVICE LOCATION', style: TextStyle(color: AppColors.darkOnSurfaceVariant, fontSize: 12, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              decoration: BoxDecoration(
-                color: AppColors.darkSurfaceContainer,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text('Indiranagar, Bengaluru, KA', style: TextStyle(color: Colors.white)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('SERVICE LOCATION', style: TextStyle(color: AppColors.darkOnSurfaceVariant, fontSize: 12, fontWeight: FontWeight.bold)),
+                TextButton.icon(
+                  onPressed: _isDetectingLocation ? null : _autoDetectLocation,
+                  icon: _isDetectingLocation 
+                    ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                    : const Icon(Icons.my_location, size: 14, color: AppColors.primary),
+                  label: Text(
+                    _isDetectingLocation ? 'Detecting...' : 'Auto-detect',
+                    style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
-            // Mock map
-            Container(
-              height: 120,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFF141A25), // Darker map mock
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.darkSurfaceContainerHighest),
-              ),
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
-                  child: const Text('Map View: Bengaluru', style: TextStyle(color: Colors.white, fontSize: 10)),
+            GestureDetector(
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => LocationPickerSheet(
+                    onLocationSelected: (loc) {
+                      setState(() {
+                        _locationCtrl.text = loc['city'] ?? loc['description'];
+                        _subLocationCtrl.text = loc['subLocation'] ?? '';
+                        _latitude = loc['lat'];
+                        _longitude = loc['lon'];
+                        _isAutoDetected = false;
+                      });
+                    },
+                  ),
+                );
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.darkSurfaceContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _locationCtrl.text.isNotEmpty ? _locationCtrl.text : 'Select Location',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        const Icon(Icons.map_rounded, color: AppColors.primary, size: 20),
+                      ],
+                    ),
+                    if (_subLocationCtrl.text.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _subLocationCtrl.text,
+                        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
+            if (_isAutoDetected)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0, left: 4.0),
+                child: Row(
+                  children: [
+                    Icon(Icons.location_on, size: 12, color: Colors.green.shade400),
+                    const SizedBox(width: 4),
+                    Text(
+                      "📍 Auto-detected",
+                      style: TextStyle(
+                        color: Colors.green.shade400,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 32),
 
             Row(

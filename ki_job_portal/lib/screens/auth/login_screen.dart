@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/firestore_service.dart';
+import '../../l10n/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -38,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const Icon(Icons.error_outline, color: Colors.white),
                 const SizedBox(width: 12),
-                const Expanded(child: Text("User doesn't exist. Please sign up first.")),
+                Expanded(child: Text(AppLocalizations.of(context)!.userNotExist)),
               ],
             ),
             backgroundColor: Colors.redAccent,
@@ -87,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const SizedBox(height: 20),
               Text(
-                "Welcome Back",
+                AppLocalizations.of(context)!.welcomeBack,
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
@@ -97,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                "Login to your account to continue where you left off.",
+                AppLocalizations.of(context)!.loginSubtitle,
                 style: TextStyle(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontSize: 15,
@@ -107,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 48),
 
               Text(
-                "MOBILE NUMBER",
+                AppLocalizations.of(context)!.mobileNumber,
                 style: TextStyle(
                   color: theme.colorScheme.onSurface.withOpacity(0.5),
                   fontSize: 11,
@@ -143,8 +144,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       keyboardType: TextInputType.phone,
                       style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 16),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return "Phone number is required";
-                        if (v.length < 10) return "Valid number required";
+                        if (v == null || v.isEmpty) return AppLocalizations.of(context)!.phoneRequired;
+                        if (v.length < 10) return AppLocalizations.of(context)!.validNumber;
                         return null;
                       },
                       decoration: InputDecoration(
@@ -183,9 +184,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     elevation: 8,
                     shadowColor: AppColors.primary.withOpacity(0.4),
                   ),
-                  child: const Text(
-                    "Send Verification Code",
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  child: Text(
+                    AppLocalizations.of(context)!.sendCode,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
               ),
@@ -196,12 +197,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   onTap: () => context.pop(),
                   child: RichText(
                     text: TextSpan(
-                      text: "Don't have an account? ",
+                      text: AppLocalizations.of(context)!.dontHaveAccount,
                       style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 14),
-                      children: const [
+                      children: [
                         TextSpan(
-                          text: "Sign Up",
-                          style: TextStyle(
+                          text: AppLocalizations.of(context)!.signup,
+                          style: const TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.bold,
                           ),

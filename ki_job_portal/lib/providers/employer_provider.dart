@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/employer_model.dart';
+import '../core/services/firestore_service.dart';
 
 class EmployerNotifier extends Notifier<EmployerModel?> {
   @override
@@ -55,6 +56,12 @@ class EmployerNotifier extends Notifier<EmployerModel?> {
     } catch (e) {
       print("❌ Error loading employer profile: $e");
     }
+  }
+
+  Future<void> boostProfile(int days) async {
+    if (state == null) return;
+    await FirestoreService.boostProfile(state!.uid, days);
+    await loadProfile(state!.uid);
   }
 }
 

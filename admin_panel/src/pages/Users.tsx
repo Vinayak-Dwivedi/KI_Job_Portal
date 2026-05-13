@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { QueryDocumentSnapshot } from "firebase/firestore";
-import { Search, Loader2, CheckCircle, Ban, Download, Edit3, ExternalLink, Plus, ShieldAlert } from "lucide-react";
+import { Search, Loader2, CheckCircle, Ban, Download, Edit3, ExternalLink, Plus, ShieldAlert, MessageSquare, MessageCircle } from "lucide-react";
 
 import { fetchUsers, updateUserStatus, registerAdminAccount, fetchActiveWorkConnections, type UserData } from "@/lib/api/users";
+import { sendMessageToUser } from "@/lib/api/chats";
 import { exportToPDF } from "@/lib/exportUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,14 +17,28 @@ import { cn } from "@/lib/utils";
 
 export default function Users() {
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const filterParam = searchParams.get("filter");
+  
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null);
   const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(filterParam === "unverified" ? "unverified" : "all");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Sync statusFilter if param changes
+  useEffect(() => {
+    if (filterParam === "unverified") {
+      setStatusFilter("unverified");
+    }
+  }, [filterParam]);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [actionType, setActionType] = useState<"block" | "unblock" | "verify" | "edit" | null>(null);
   const [showRegisterAdmin, setShowRegisterAdmin] = useState(false);
   const [adminForm, setAdminForm] = useState({ name: "", email: "", phone: "" });
   const [editForm, setEditForm] = useState<Partial<UserData>>({});
+  const [showMessageDialog, setShowMessageDialog] = useState(false);
+  const [messageText, setMessageText] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["users", roleFilter],
@@ -88,6 +103,27 @@ export default function Users() {
     registerAdminMutation.mutate(adminForm);
   };
 
+  const handleSendMessage = async () => {
+    if (!selectedUser || !messageText.trim()) return;
+    
+    setIsSendingMessage(true);
+    try {
+      await sendMessageToUser(
+        selectedUser.id, 
+        selectedUser.name || "User", 
+        selectedUser.profilePhotoUrl || "", 
+        messageText
+      );
+      setShowMessageDialog(false);
+      setMessageText("");
+      setSelectedUser(null);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
   const handleExportPDF = () => {
     if (!data?.users) return;
     
@@ -116,11 +152,13 @@ export default function Users() {
 
   const users = data?.users || [];
 
-  // Client side search for simplicity on current view chunk
-  const filteredUsers = users.filter(u => 
-    u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Client side search and status filter
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          u.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || (statusFilter === "unverified" && !u.isVerified);
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="space-y-6 max-w-[1400px] mx-auto pb-12">
@@ -152,6 +190,14 @@ export default function Users() {
               />
             </div>
             <div className="flex gap-2">
+              <select 
+                className="h-10 rounded-md border-none bg-zinc-50 dark:bg-zinc-950/40 px-3 py-2 text-sm font-bold shadow-inner focus:outline-none cursor-pointer"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="all">All Status</option>
+                <option value="unverified">Pending Verification</option>
+              </select>
               <select 
                 className="h-10 rounded-md border-none bg-zinc-50 dark:bg-zinc-950/40 px-3 py-2 text-sm font-bold shadow-inner focus:outline-none cursor-pointer"
                 value={roleFilter}
@@ -256,6 +302,14 @@ export default function Users() {
                           ) : (
                              <Button variant="ghost" size="sm" onClick={() => handleAction(user, "block")} className="text-destructive font-bold hover:bg-destructive/10">DISABLE</Button>
                           )}
+                          <Link to={`/chats?userId=${user.id}`}>
+                            <Button variant="ghost" size="sm" className="hover:bg-primary/10">
+                              <MessageCircle className="w-4 h-4 text-primary" />
+                            </Button>
+                          </Link>
+                          <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setShowMessageDialog(true); }} className="hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                            <MessageSquare className="w-4 h-4 text-zinc-400" />
+                          </Button>
                           <Button variant="ghost" size="sm" onClick={() => handleAction(user, "edit")} className="hover:bg-zinc-100 dark:hover:bg-zinc-800">
                             <Edit3 className="w-4 h-4 text-zinc-400" />
                           </Button>
@@ -315,10 +369,18 @@ export default function Users() {
                     <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Telecom Contact</label>
                     <Input value={editForm.phone} onChange={(e) => setEditForm({...editForm, phone: e.target.value})} className="bg-zinc-50 dark:bg-zinc-950/40 border-none h-12 shadow-inner" />
                  </div>
-                 <div className="space-y-2">
+                  <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Credit Allocations</label>
-                    <Input type="number" value={editForm.credits} onChange={(e) => setEditForm({...editForm, credits: parseInt(e.target.value)})} className="bg-zinc-50 dark:bg-zinc-950/40 border-none h-12 shadow-inner" />
-                 </div>
+                    <Input 
+                      type="number" 
+                      value={editForm.credits ?? 0} 
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        setEditForm({...editForm, credits: isNaN(val) ? 0 : val});
+                      }} 
+                      className="bg-zinc-50 dark:bg-zinc-950/40 border-none h-12 shadow-inner" 
+                    />
+                  </div>
                  <div className="space-y-2 col-span-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Permission Role</label>
                     <select 
@@ -407,6 +469,39 @@ export default function Users() {
                  </Button>
                </div>
             </form>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Message Dialog */}
+      <Dialog open={showMessageDialog} onOpenChange={(open) => { if (!open) setShowMessageDialog(false); if (!open) setSelectedUser(null); }}>
+        <DialogContent className="no-line-card p-1 max-w-lg">
+          <div className="p-8">
+            <DialogHeader className="mb-6">
+              <DialogTitle className="text-2xl font-serif">Message <span className="text-primary italic">{selectedUser?.name}</span></DialogTitle>
+              <DialogDescription>
+                Send a direct secure message to this user's mobile application.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <textarea 
+                className="w-full h-40 rounded-xl border-none bg-zinc-50 dark:bg-zinc-950/40 p-4 text-sm font-medium shadow-inner focus:outline-none resize-none"
+                placeholder="Type your message here..."
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+              />
+              
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => { setShowMessageDialog(false); setSelectedUser(null); }} className="flex-1 h-12 rounded-xl">Cancel</Button>
+                <Button 
+                  onClick={handleSendMessage} 
+                  className="flex-[2] h-12 rounded-xl font-bold emerald-gradient text-white"
+                  disabled={isSendingMessage || !messageText.trim()}
+                >
+                  {isSendingMessage ? <Loader2 className="w-4 h-4 animate-spin" /> : "SEND MESSAGE"}
+                </Button>
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

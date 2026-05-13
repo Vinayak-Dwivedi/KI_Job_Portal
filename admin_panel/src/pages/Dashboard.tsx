@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Briefcase, Activity, HardHat, Loader2, Download, ChevronDown, FileText, TableProperties, CreditCard } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Users, Briefcase, HardHat, Loader2, Download, ChevronDown, FileText, TableProperties, CreditCard, Activity, TrendingUp } from "lucide-react"
 import { 
   AreaChart, 
   Area, 
@@ -78,30 +78,33 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-         <h2 className="text-3xl font-bold tracking-tight">Platform Overview</h2>
+    <div className="space-y-10 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+         <div>
+            <h2 className="text-3xl font-black tracking-tight text-white uppercase">Platform Analytics</h2>
+            <p className="text-zinc-500 font-medium mt-1">Real-time health and growth indicators</p>
+         </div>
          
          <div className="relative">
             <Button 
                variant="outline" 
-               className="gap-2 h-11 border-zinc-200 dark:border-zinc-800"
+               className="gap-3 h-12 bg-white/5 border-white/10 hover:bg-white/10 text-white rounded-2xl px-6 transition-all"
                onClick={() => setShowExportMenu(!showExportMenu)}
                disabled={isExporting}
             >
-               {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-               Export Statistics
+               {isExporting ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <Download className="w-4 h-4 text-primary" />}
+               <span className="font-bold">EXPORT DATA</span>
                <ChevronDown className="w-4 h-4 opacity-50" />
             </Button>
 
             {showExportMenu && (
-              <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-white/10 glass-card bg-background shadow-2xl z-50 overflow-hidden animate-in slide-in-from-top-2">
-                <button onClick={() => handleExport('pdf')} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-                  <FileText className="w-4 h-4 text-red-500" /> Export as PDF
+              <div className="absolute right-0 top-full mt-3 w-56 rounded-2xl border border-white/10 bg-[#161B22] shadow-2xl z-50 overflow-hidden animate-in slide-in-from-top-2">
+                <button onClick={() => handleExport('pdf')} className="w-full flex items-center gap-3 px-5 py-4 text-sm font-bold text-zinc-300 hover:text-white hover:bg-white/5 transition-all">
+                  <FileText className="w-5 h-5 text-red-500" /> Export as PDF
                 </button>
                 <div className="h-px bg-white/5 w-full" />
-                <button onClick={() => handleExport('csv')} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
-                  <TableProperties className="w-4 h-4 text-green-500" /> Export as CSV
+                <button onClick={() => handleExport('csv')} className="w-full flex items-center gap-3 px-5 py-4 text-sm font-bold text-zinc-300 hover:text-white hover:bg-white/5 transition-all">
+                  <TableProperties className="w-5 h-5 text-emerald-500" /> Export as CSV
                 </button>
               </div>
             )}
@@ -110,102 +113,133 @@ export default function Dashboard() {
 
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="glass-card border-none shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-zinc-500">Total Users</CardTitle>
-            <div className="bg-blue-500/10 p-2 rounded-lg">
-               <Users className="h-4 w-4 text-blue-500" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black">{stats?.totalUsers.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">Platform-wide registrations</p>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card border-none shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-zinc-500">Total Workers</CardTitle>
-            <div className="bg-emerald-500/10 p-2 rounded-lg">
-               <HardHat className="h-4 w-4 text-emerald-500" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black">{stats?.totalWorkers.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">Verified taskers</p>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card border-none shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-zinc-500">Total Employers</CardTitle>
-            <div className="bg-purple-500/10 p-2 rounded-lg">
-               <Briefcase className="h-4 w-4 text-purple-500" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black">{stats?.totalEmployers.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">Registered employers</p>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card border-none shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-zinc-500">Total Subscribers</CardTitle>
-            <div className="bg-orange-500/10 p-2 rounded-lg">
-               <CreditCard className="h-4 w-4 text-orange-500" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black">{stats?.totalSubscribers.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">Active paid plans</p>
-          </CardContent>
-        </Card>
+        <StatCard 
+          title="Total Users" 
+          value={stats?.totalUsers} 
+          icon={Users} 
+          color="blue" 
+          description="Platform registrations"
+        />
+        <StatCard 
+          title="Total Workers" 
+          value={stats?.totalWorkers} 
+          icon={HardHat} 
+          color="emerald" 
+          description="Verified taskers"
+        />
+        <StatCard 
+          title="Total Employers" 
+          value={stats?.totalEmployers} 
+          icon={Briefcase} 
+          color="indigo" 
+          description="Registered hirers"
+        />
+        <StatCard 
+          title="Subscribers" 
+          value={stats?.totalSubscribers} 
+          icon={CreditCard} 
+          color="amber" 
+          description="Active paid plans"
+        />
       </div>
 
-      {/* Chart Section */}
-      <Card className="glass-card border-none shadow-lg">
-        <CardHeader>
-          <CardTitle>Growth Trends</CardTitle>
-          <CardDescription>Monthly registration and subscription trajectory</CardDescription>
+      {/* Main Chart Section */}
+      <Card className="bg-[#0F131A] border border-white/5 rounded-[32px] overflow-hidden shadow-2xl">
+        <CardHeader className="p-8 pb-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl font-black text-white flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-primary" />
+                USER GROWTH TRAJECTORY
+              </CardTitle>
+              <p className="text-zinc-500 text-sm font-medium mt-1">Comparative growth across all user segments</p>
+            </div>
+            <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest">
+              <div className="flex items-center gap-1.5 text-primary"><div className="w-2 h-2 rounded-full bg-primary" /> Total</div>
+              <div className="flex items-center gap-1.5 text-emerald-500"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Workers</div>
+              <div className="flex items-center gap-1.5 text-indigo-500"><div className="w-2 h-2 rounded-full bg-indigo-500" /> Employers</div>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="pl-2">
-          <div className="h-[400px] w-full">
+        <CardContent className="p-8">
+          <div className="h-[450px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stats?.userGrowth}>
+              <AreaChart data={stats?.userGrowth} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                  <linearGradient id="colorPrimary" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
                     <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.1} vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
                 <XAxis 
                   dataKey="name" 
-                  stroke="#888888" 
-                  fontSize={12} 
+                  stroke="rgba(255,255,255,0.3)" 
+                  fontSize={10} 
+                  fontWeight="bold"
                   tickLine={false} 
                   axisLine={false} 
+                  tickMargin={15}
                 />
                 <YAxis 
-                  stroke="#888888" 
-                  fontSize={12} 
+                  stroke="rgba(255,255,255,0.3)" 
+                  fontSize={10} 
+                  fontWeight="bold"
                   tickLine={false} 
                   axisLine={false} 
                   tickFormatter={(value) => `${value}`} 
                 />
                 <Tooltip 
-                  contentStyle={{ borderRadius: '12px', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  contentStyle={{ 
+                    borderRadius: '20px', 
+                    background: '#161B22', 
+                    border: '1px solid rgba(255,255,255,0.1)', 
+                    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+                    padding: '16px'
+                  }}
+                  itemStyle={{ fontWeight: 'bold', fontSize: '12px' }}
                 />
-                <Area type="monotone" name="Total Users" dataKey="users" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorUsers)" strokeWidth={3} />
-                <Area type="monotone" name="Workers" dataKey="workers" stroke="#10b981" fill="transparent" strokeWidth={2} />
-                <Area type="monotone" name="Employers" dataKey="employers" stroke="#a855f7" fill="transparent" strokeWidth={2} />
-                <Area type="monotone" name="Subscribers" dataKey="subscribers" stroke="#f59e0b" fill="transparent" strokeDasharray="5 5" strokeWidth={2} />
+                <Area type="monotone" dataKey="users" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorPrimary)" strokeWidth={4} />
+                <Area type="monotone" dataKey="workers" stroke="#10b981" fill="transparent" strokeWidth={2} />
+                <Area type="monotone" dataKey="employers" stroke="#6366f1" fill="transparent" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+function StatCard({ title, value, icon: Icon, color, description }: any) {
+  const colorMap: any = {
+    blue: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+    emerald: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    indigo: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
+    amber: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+  }
+
+  return (
+    <Card className="bg-[#0F131A] border border-white/5 rounded-[24px] p-6 hover:border-primary/50 transition-all group overflow-hidden relative">
+      <div className="absolute top-[-20px] right-[-20px] h-32 w-32 rounded-full bg-primary/5 blur-3xl pointer-events-none group-hover:bg-primary/10 transition-all" />
+      
+      <div className="flex flex-row items-center justify-between mb-6">
+        <div className={`p-3 rounded-2xl border ${colorMap[color]}`}>
+           <Icon className="h-5 w-5" />
+        </div>
+        <div className="flex items-center gap-1 text-primary">
+          <Activity className="h-3 w-3 animate-pulse" />
+          <span className="text-[10px] font-black uppercase tracking-widest">Live</span>
+        </div>
+      </div>
+      
+      <div>
+        <div className="text-4xl font-black text-white tracking-tighter">
+          {value?.toLocaleString() || "0"}
+        </div>
+        <p className="text-sm font-bold text-zinc-300 mt-2 uppercase tracking-tight">{title}</p>
+        <p className="text-xs text-zinc-500 font-medium mt-1">{description}</p>
+      </div>
+    </Card>
   )
 }

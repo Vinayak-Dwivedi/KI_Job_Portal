@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/widgets/primary_button.dart';
+import '../l10n/app_localizations.dart';
 
 class UserTypeSelectionScreen extends StatefulWidget {
   const UserTypeSelectionScreen({super.key});
@@ -33,14 +34,14 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'What brings you to KI?',
+                AppLocalizations.of(context)!.whatBrings,
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
-                'Select how you want to use the platform. You can change this later.',
+                AppLocalizations.of(context)!.selectRole,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -49,8 +50,8 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen> {
 
               // Worker Card
               _RoleCard(
-                title: 'I want to work',
-                description: 'Find jobs, track applications, and earn.',
+                title: AppLocalizations.of(context)!.wantWork,
+                description: AppLocalizations.of(context)!.findJobsSubtitle,
                 icon: Icons.work_outline,
                 isSelected: _selectedRole == 'worker',
                 onTap: () => setState(() => _selectedRole = 'worker'),
@@ -59,8 +60,8 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen> {
 
               // Employer Card
               _RoleCard(
-                title: 'I want to hire',
-                description: 'Post jobs, find talent, and manage applicants.',
+                title: AppLocalizations.of(context)!.wantHire,
+                description: AppLocalizations.of(context)!.postJobsSubtitle,
                 icon: Icons.business_center_outlined,
                 isSelected: _selectedRole == 'employer',
                 onTap: () => setState(() => _selectedRole = 'employer'),
@@ -68,7 +69,7 @@ class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen> {
               
               const Spacer(),
               PrimaryButton(
-                label: 'Continue',
+                label: AppLocalizations.of(context)!.continueLabel,
                 onPressed: _selectedRole == null
                     ? () {} 
                     : () {

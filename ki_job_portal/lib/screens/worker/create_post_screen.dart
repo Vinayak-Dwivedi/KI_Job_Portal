@@ -146,7 +146,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           decoration: BoxDecoration(
             color: AppColors.surfaceContainerLowest,
             border: Border(
-              top: BorderSide(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+              top: BorderSide(color: AppColors.outlineVariant.withOpacity(0.5)),
             ),
           ),
           child: Row(

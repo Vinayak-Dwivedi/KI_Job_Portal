@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/theme/app_colors.dart';
 
@@ -37,12 +38,12 @@ final _creditBalanceProvider =
   if (auth == null) return Stream.value(0);
 
   return FirebaseFirestore.instance
-      .collection('contactCredits')
+      .collection('users')
       .doc(auth.uid)
       .snapshots()
       .map((doc) {
         if (!doc.exists) return 0;
-        return int.tryParse(doc.data()!['balance']?.toString() ?? '0') ?? 0;
+        return int.tryParse(doc.data()!['credits']?.toString() ?? '0') ?? 0;
       });
 });
 
@@ -147,6 +148,23 @@ class EarningsScreen extends ConsumerWidget {
                       const SizedBox(width: 10),
                       _buildStatChip(Icons.star_rounded, 'Boost Job = 50 cr'),
                     ],
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: () => context.push('/referral'),
+                      icon: const Icon(Icons.card_giftcard_rounded, size: 18),
+                      label: const Text('REFER & EARN FREE CREDITS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white.withOpacity(0.2),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                      ),
+                    ),
                   ),
                 ],
               ),

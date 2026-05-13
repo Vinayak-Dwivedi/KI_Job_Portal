@@ -8,7 +8,7 @@ class OtpLoadingOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black.withValues(alpha: 0.6),
+      color: Colors.black.withOpacity(0.6),
       width: double.infinity,
       height: double.infinity,
       child: Center(
@@ -27,7 +27,7 @@ class OtpLoadingOverlay extends StatelessWidget {
               SizedBox(
                 height: 120,
                 child: Lottie.network(
-                  'https://assets10.lottiefiles.com/private_files/lf30_8stfc9tc.json',
+                  'https://lottie.host/8040d73a-4467-466d-9781-a75d506a77d1/9r7ZtY7C5l.json',
                   errorBuilder: (context, error, stackTrace) => const CircularProgressIndicator(),
                 ),
               ),

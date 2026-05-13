@@ -75,14 +75,14 @@ class KIBottomNavBar extends ConsumerWidget {
                         height: 52,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                            colors: [Color(0xFFF59E0B), Color(0xFFEA580C)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF2563EB).withOpacity(0.4),
+                              color: const Color(0xFFF59E0B).withOpacity(0.4),
                               blurRadius: 16,
                               offset: const Offset(0, 4),
                             ),

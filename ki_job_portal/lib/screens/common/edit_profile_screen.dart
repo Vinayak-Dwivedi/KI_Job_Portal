@@ -11,7 +11,9 @@ import '../../providers/auth_provider.dart';
 import '../../providers/worker_provider.dart';
 import '../../providers/employer_provider.dart';
 import '../../core/services/document_service.dart';
+import '../../core/services/location_service.dart';
 import '../../models/document_model.dart';
+import '../../widgets/common/location_picker_sheet.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -24,19 +26,36 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isDetectingLocation = false;
 
   String _role = 'worker';
   
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _subLocationController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
   final TextEditingController _experienceController = TextEditingController();
+  
+  // Extended Fields
+  final TextEditingController _permanentAddressController = TextEditingController();
+  final TextEditingController _aadhaarController = TextEditingController();
+  final TextEditingController _emergencyContactController = TextEditingController();
+  final TextEditingController _companyRegController = TextEditingController();
+  final TextEditingController _gstController = TextEditingController();
+  
+  String? _selectedGender;
+  final List<String> _genderOptions = ['Male', 'Female', 'Other'];
+
+  String? _selectedNationality;
+  final List<String> _nationalityOptions = ['Indian', 'Nepali', 'Bangladeshi', 'Bhutanese', 'Sri Lankan', 'Other'];
 
   List<String> _selectedSkills = [];
   List<Map<String, dynamic>> _documents = [];
   List<String> _availableCategories = [];
   String _profilePhotoUrl = '';
+  double? _latitude;
+  double? _longitude;
 
   @override
   void initState() {
@@ -65,7 +84,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         final loc = data['location'];
         if (loc is Map<String, dynamic>) {
           _addressController.text = loc['address'] ?? '';
+          _subLocationController.text = loc['subLocation'] ?? data['subLocation'] ?? '';
+        } else if (loc is String) {
+          _addressController.text = loc;
+          _subLocationController.text = data['subLocation'] ?? '';
         }
+        
+        _latitude = data['latitude'] ?? (loc is Map ? loc['lat'] : null);
+        _longitude = data['longitude'] ?? (loc is Map ? loc['lng'] : null);
         
         if (_role == 'worker') {
           _experienceController.text = (data['experience'] ?? 0).toString();
@@ -73,6 +99,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           if (skillsList is List) {
             _selectedSkills = List<String>.from(skillsList);
           }
+          _selectedGender = data['gender'];
+          final nationality = data['nationality'];
+          if (nationality != null && _nationalityOptions.contains(nationality)) {
+            _selectedNationality = nationality;
+          } else if (nationality != null && nationality.isNotEmpty) {
+            _selectedNationality = 'Other';
+          }
+          _permanentAddressController.text = data['permanentAddress'] ?? '';
+          _aadhaarController.text = data['aadhaarNumber'] ?? '';
+          _emergencyContactController.text = data['emergencyContact'] ?? '';
+        } else {
+          _companyRegController.text = data['companyRegistrationNumber'] ?? '';
+          _gstController.text = data['gstNumber'] ?? '';
         }
 
         final docsList = data['documents'];
@@ -107,13 +146,27 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         'bio': _bioController.text.trim(),
         'location': {
           'address': _addressController.text.trim(),
+          'subLocation': _subLocationController.text.trim(),
+          'lat': _latitude ?? 0.0,
+          'lng': _longitude ?? 0.0,
         },
+        'subLocation': _subLocationController.text.trim(), // Keep for backward compat
+        'latitude': _latitude,
+        'longitude': _longitude,
         'documents': _documents,
       };
 
       if (_role == 'worker') {
         updateData['experience'] = int.tryParse(_experienceController.text) ?? 0;
         updateData['skills'] = _selectedSkills;
+        updateData['gender'] = _selectedGender;
+        updateData['nationality'] = _selectedNationality;
+        updateData['permanentAddress'] = _permanentAddressController.text.trim();
+        updateData['aadhaarNumber'] = _aadhaarController.text.trim();
+        updateData['emergencyContact'] = _emergencyContactController.text.trim();
+      } else {
+        updateData['companyRegistrationNumber'] = _companyRegController.text.trim();
+        updateData['gstNumber'] = _gstController.text.trim();
       }
 
       await FirebaseFirestore.instance.collection('users').doc(auth.uid).update(updateData);
@@ -180,6 +233,28 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     }
   }
 
+  Future<String?> _showCategoryDialog() async {
+    String? selectedCategory = 'ID Proof';
+    final categories = ['ID Proof', 'Address Proof', 'GST', 'Certificate', 'Resume', 'Other'];
+    
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Document Category'),
+        content: DropdownButtonFormField<String>(
+          value: selectedCategory,
+          items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+          onChanged: (val) => selectedCategory = val,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(onPressed: () => context.pop(null), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => context.pop(selectedCategory), child: const Text('Upload')),
+        ],
+      ),
+    );
+  }
+
   Future<void> _pickDocument() async {
     if (_documents.length >= 4) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Maximum 4 documents allowed. Delete an existing one to add another.'), backgroundColor: Colors.orange));
@@ -193,6 +268,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       );
  
       if (result != null && result.files.single.path != null) {
+        final category = await _showCategoryDialog();
+        if (category == null) return; // User cancelled
+
         setState(() => _isLoading = true);
         final auth = ref.read(authProvider);
         if (auth == null) return;
@@ -202,6 +280,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           uid: auth.uid,
           name: result.files.single.name,
           phone: auth.phone,
+          category: category,
           file: File(result.files.single.path!),
         );
         
@@ -210,13 +289,35 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           _isLoading = false;
         });
         
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Document uploaded successfully!'), backgroundColor: Colors.green));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Document uploaded successfully!'), backgroundColor: Colors.green));
+        }
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
       debugPrint("Document upload error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error uploading document'), backgroundColor: Colors.red));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error uploading document'), backgroundColor: Colors.red));
+      }
     }
+  }
+
+  Future<void> _pickLocation() async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => LocationPickerSheet(
+        onLocationSelected: (loc) {
+          setState(() {
+            _addressController.text = loc['city'] ?? loc['description'];
+            _subLocationController.text = loc['subLocation'] ?? '';
+            _latitude = loc['lat'];
+            _longitude = loc['lon'];
+          });
+        },
+      ),
+    );
   }
 
   @override
@@ -224,8 +325,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _addressController.dispose();
+    _subLocationController.dispose();
     _bioController.dispose();
     _experienceController.dispose();
+    _permanentAddressController.dispose();
+    _aadhaarController.dispose();
+    _emergencyContactController.dispose();
+    _companyRegController.dispose();
+    _gstController.dispose();
     super.dispose();
   }
 
@@ -304,7 +411,27 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               const SizedBox(height: 16),
               _buildTextField('About / Bio', _bioController, theme, maxLines: 5, icon: Icons.description_outlined),
               const SizedBox(height: 16),
-              _buildTextField('Office Address', _addressController, theme, icon: Icons.location_on_outlined),
+              _buildTextField(
+                'City / Location', 
+                _addressController, 
+                theme, 
+                icon: Icons.location_on_outlined,
+                readOnly: true,
+                onTap: _pickLocation,
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.map_rounded, size: 18),
+                  onPressed: _pickLocation,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildTextField(
+                'Sub-Location / Area', 
+                _subLocationController, 
+                theme, 
+                icon: Icons.map_outlined,
+                readOnly: true,
+                onTap: _pickLocation,
+              ),
               const SizedBox(height: 32),
               
               if (_role == 'worker') ...[
@@ -349,6 +476,60 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     );
                   }).toList(),
                 ),
+                const SizedBox(height: 32),
+                
+                _buildSectionTitle('Verification Details', theme),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _selectedGender,
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.people_outline, size: 20, color: theme.colorScheme.primary.withOpacity(0.7)),
+                    filled: true,
+                    fillColor: theme.cardColor,
+                    hintText: 'Select Gender',
+                    hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5), fontSize: 14),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.1))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.1))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  ),
+                  items: _genderOptions.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                  onChanged: (val) => setState(() => _selectedGender = val),
+                  dropdownColor: theme.cardColor,
+                  style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 15),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _selectedNationality,
+                  decoration: InputDecoration(
+                    prefixIcon: Icon(Icons.public, size: 20, color: theme.colorScheme.primary.withOpacity(0.7)),
+                    filled: true,
+                    fillColor: theme.cardColor,
+                    hintText: 'Select Nationality',
+                    hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5), fontSize: 14),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.1))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: theme.dividerColor.withOpacity(0.1))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  ),
+                  items: _nationalityOptions.map((n) => DropdownMenuItem(value: n, child: Text(n))).toList(),
+                  onChanged: (val) => setState(() => _selectedNationality = val),
+                  dropdownColor: theme.cardColor,
+                  style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 15),
+                ),
+                const SizedBox(height: 16),
+                _buildTextField('Permanent Address', _permanentAddressController, theme, maxLines: 2, icon: Icons.home_work_outlined),
+                const SizedBox(height: 16),
+                _buildTextField('Aadhaar / National ID', _aadhaarController, theme, icon: Icons.badge_outlined),
+                const SizedBox(height: 16),
+                _buildTextField('Emergency Contact Number', _emergencyContactController, theme, icon: Icons.phone_callback_outlined, keyboardType: TextInputType.phone),
+                const SizedBox(height: 32),
+              ] else ...[
+                _buildSectionTitle('Company Registration details', theme),
+                const SizedBox(height: 16),
+                _buildTextField('Registration Number', _companyRegController, theme, icon: Icons.business_outlined),
+                const SizedBox(height: 16),
+                _buildTextField('GST Number', _gstController, theme, icon: Icons.receipt_long_outlined),
                 const SizedBox(height: 32),
               ],
 
@@ -397,7 +578,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           Icon(Icons.description_outlined, color: theme.colorScheme.primary),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(doc['name'] ?? '', style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w600)),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(doc['name'] ?? '', style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w600)),
+                                if (doc['category'] != null) ...[
+                                  const SizedBox(height: 2),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(doc['category'], style: TextStyle(color: theme.colorScheme.primary, fontSize: 10, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                           IconButton(
                             icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 22),
@@ -464,7 +661,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, ThemeData theme, {bool isRequired = false, bool isNumber = false, int maxLines = 1, IconData? icon, TextInputType? keyboardType}) {
+  Widget _buildTextField(String label, TextEditingController controller, ThemeData theme, {bool isRequired = false, bool isNumber = false, int maxLines = 1, IconData? icon, TextInputType? keyboardType, Widget? suffixIcon, bool readOnly = false, VoidCallback? onTap}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -473,6 +670,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         TextFormField(
           controller: controller,
           maxLines: maxLines,
+          readOnly: readOnly,
+          onTap: onTap,
           style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 15),
           keyboardType: keyboardType ?? (isNumber ? TextInputType.number : TextInputType.text),
           validator: isRequired ? (value) {
@@ -481,6 +680,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           } : null,
           decoration: InputDecoration(
             prefixIcon: icon != null ? Icon(icon, size: 20, color: theme.colorScheme.primary.withOpacity(0.7)) : null,
+            suffixIcon: suffixIcon,
             filled: true,
             fillColor: theme.cardColor,
             hintText: 'Enter your ${label.toLowerCase()}',

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../core/services/post_service.dart';
 import '../../providers/auth_provider.dart';
@@ -34,14 +35,17 @@ class _CommentBottomSheetState extends ConsumerState<CommentBottomSheet> {
     final worker = ref.read(workerProvider);
     final employer = ref.read(employerProvider);
 
+    bool isVerified = false;
     if (worker != null && worker.uid == auth.uid) {
       name = worker.name;
       photoUrl = worker.profilePhotoUrl;
       role = "worker";
+      isVerified = worker.isVerified;
     } else if (employer != null && employer.uid == auth.uid) {
       name = employer.name;
       photoUrl = employer.profilePhotoUrl;
       role = "employer";
+      isVerified = employer.isVerified;
     }
 
     await PostService.addComment(widget.postId, {
@@ -50,6 +54,7 @@ class _CommentBottomSheetState extends ConsumerState<CommentBottomSheet> {
       'role': role,
       'profilePhotoUrl': photoUrl,
       'text': _commentController.text.trim(),
+      'isVerified': isVerified,
     });
 
     _commentController.clear();
@@ -157,33 +162,61 @@ class _CommentBottomSheetState extends ConsumerState<CommentBottomSheet> {
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor: theme.colorScheme.surfaceVariant,
-                          backgroundImage: (photoUrl != null && photoUrl.isNotEmpty) ? NetworkImage(photoUrl) : null,
-                          child: (photoUrl == null || photoUrl.isEmpty) ? Icon(Icons.person, size: 18, color: theme.colorScheme.onSurfaceVariant) : null,
+                        GestureDetector(
+                          onTap: () {
+                            final uid = comment['uid'];
+                            final role = comment['role'] ?? 'worker';
+                            if (uid != null) {
+                              Navigator.pop(context); // Close sheet
+                              context.push('/profile/$role/$uid');
+                            }
+                          },
+                          child: CircleAvatar(
+                            radius: 18,
+                            backgroundColor: theme.colorScheme.surfaceVariant,
+                            backgroundImage: (photoUrl != null && photoUrl.isNotEmpty) ? NetworkImage(photoUrl) : null,
+                            child: (photoUrl == null || photoUrl.isEmpty) ? Icon(Icons.person, size: 18, color: theme.colorScheme.onSurfaceVariant) : null,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    name,
-                                    style: TextStyle(
-                                      color: theme.colorScheme.onSurface,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                              GestureDetector(
+                                onTap: () {
+                                  final uid = comment['uid'];
+                                  final role = comment['role'] ?? 'worker';
+                                    if (uid != null) {
+                                      Navigator.pop(context); // Close sheet
+                                      context.push('/profile/$role/$uid');
+                                    }
+                                },
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: TextStyle(
+                                        color: theme.colorScheme.onSurface,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    timeStr,
-                                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 11),
-                                  ),
-                                ],
+                                    if (comment['isVerified'] == true) ...[
+                                      const SizedBox(width: 4),
+                                      Icon(
+                                        Icons.verified_rounded,
+                                        color: theme.colorScheme.primary,
+                                        size: 14,
+                                      ),
+                                    ],
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      timeStr,
+                                      style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Text(

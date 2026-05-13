@@ -5,9 +5,16 @@ import 'package:skeletonizer/skeletonizer.dart';
 import '../../providers/post_provider.dart';
 import '../../widgets/feed/post_card.dart';
 import '../../core/theme/app_colors.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/worker_provider.dart';
+import '../../providers/employer_provider.dart';
+import '../../l10n/app_localizations.dart';
+import '../../widgets/feed/feed_filter_sheet.dart';
+
 
 class FeedScreen extends ConsumerStatefulWidget {
-  const FeedScreen({super.key});
+  final String? targetPostId;
+  const FeedScreen({super.key, this.targetPostId});
 
   @override
   ConsumerState<FeedScreen> createState() => _FeedScreenState();
@@ -15,28 +22,60 @@ class FeedScreen extends ConsumerStatefulWidget {
 
 class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final ScrollController _scrollController = ScrollController();
+  String? _highlightedPostId;
+  bool _hasScrolledToTarget = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
+
+    if (widget.targetPostId != null) {
+      _highlightedPostId = widget.targetPostId;
+    }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  String _getTabKey() {
+    switch (_tabController.index) {
+      case 1: return 'trending';
+      case 2: return 'network';
+      default: return 'latest';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final feedAsyncValue = ref.watch(feedProvider);
+    final tabKey = _getTabKey();
+    final feedAsyncValue = ref.watch(feedProvider(tabKey));
+    final filteredPosts = ref.watch(filteredCommunityFeedProvider(tabKey));
     final theme = Theme.of(context);
+
+    
+    final auth = ref.watch(authProvider);
+    final worker = ref.watch(workerProvider);
+    final employer = ref.watch(employerProvider);
+
+    String? userPhoto;
+    if (auth?.role == 'worker') userPhoto = worker?.profilePhotoUrl;
+    if (auth?.role == 'employer') userPhoto = employer?.profilePhotoUrl;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Community Feed', 
+        title: Text(AppLocalizations.of(context)!.communityFeed, 
           style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w900, fontSize: 24, letterSpacing: -0.5)),
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
@@ -44,12 +83,22 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
         actions: [
           IconButton(
             icon: Icon(Icons.search_rounded, color: theme.colorScheme.onSurface, size: 26),
-            onPressed: () {},
+            onPressed: () => context.push('/search'),
           ),
           IconButton(
             icon: Icon(Icons.notifications_none_rounded, color: theme.colorScheme.onSurface, size: 26),
             onPressed: () {},
-          )
+          ),
+          IconButton(
+            icon: Icon(Icons.filter_list_rounded, color: theme.colorScheme.onSurface, size: 26),
+            onPressed: () => showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) => const FeedFilterSheet(),
+            ),
+          ),
+
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -59,10 +108,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
           indicatorWeight: 3,
           labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.2),
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          tabs: const [
-            Tab(text: 'LATEST'),
-            Tab(text: 'TRENDING'),
-            Tab(text: 'NETWORK'),
+          tabs: [
+            Tab(text: AppLocalizations.of(context)!.tabLatest),
+            Tab(text: AppLocalizations.of(context)!.tabTrending),
+            Tab(text: AppLocalizations.of(context)!.tabNetwork),
           ],
 
         ),
@@ -73,17 +122,49 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
             return _buildEmptyState(theme);
           }
 
+          if (widget.targetPostId != null && !_hasScrolledToTarget) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              final index = posts.indexWhere((p) => p['id'] == widget.targetPostId);
+              if (index != null && index != -1) {
+                // index + 2 because of CreatePostArea and FeaturedWorkers
+                _scrollController.animateTo(
+                  (index + 2) * 400.0, // Rough estimate of post height, index based scroll is better with keys but this is a start
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.easeInOut,
+                );
+                setState(() => _hasScrolledToTarget = true);
+                
+                // Clear highlight after 3 seconds
+                Future.delayed(const Duration(seconds: 3), () {
+                  if (mounted) setState(() => _highlightedPostId = null);
+                });
+              }
+            });
+          }
+
           return RefreshIndicator(
             backgroundColor: theme.cardColor,
             color: AppColors.primary,
-            onRefresh: () async => ref.refresh(feedProvider.future),
+            onRefresh: () async => ref.refresh(feedProvider(tabKey).future),
             child: ListView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.only(top: 8),
-              itemCount: posts.length + 2,
+              itemCount: filteredPosts.length + 2,
               itemBuilder: (context, index) {
-                if (index == 0) return _buildCreatePostArea(context, theme);
-                if (index == 1) return _buildPromoCard(context);
-                return PostCard(post: posts[index - 2]);
+                if (index == 0) return _buildCreatePostArea(context, theme, userPhoto);
+                if (index == 1) return _buildFeaturedWorkers(theme);
+                final post = filteredPosts[index - 2];
+                final isHighlighted = post['id'] == _highlightedPostId;
+
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  decoration: BoxDecoration(
+                    border: isHighlighted 
+                      ? Border.all(color: AppColors.primary, width: 2)
+                      : null,
+                  ),
+                  child: PostCard(post: post),
+                );
               },
             ),
           );
@@ -95,10 +176,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
             children: [
               const Icon(Icons.error_outline, color: AppColors.error, size: 48),
               const SizedBox(height: 16),
-              Text('Error loading feed: $err', style: const TextStyle(color: AppColors.error)),
+              Text('${AppLocalizations.of(context)!.errorLoadingFeed}$err', style: const TextStyle(color: AppColors.error)),
               TextButton(
-                onPressed: () => ref.refresh(feedProvider),
-                child: const Text('Retry', style: TextStyle(color: AppColors.primary)),
+                onPressed: () => ref.refresh(feedProvider(tabKey)),
+                child: Text(AppLocalizations.of(context)!.retry, style: const TextStyle(color: AppColors.primary)),
               ),
             ],
           ),
@@ -115,12 +196,12 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
           Icon(Icons.feed_outlined, color: theme.colorScheme.surfaceVariant, size: 80),
           const SizedBox(height: 16),
           Text(
-            'No posts yet',
+            AppLocalizations.of(context)!.noPostsYet,
             style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            'Be the first to share an update with the community!',
+            AppLocalizations.of(context)!.beFirstToShare,
             textAlign: TextAlign.center,
             style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 14),
           ),
@@ -132,7 +213,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            child: const Text('Start a Conversation', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(AppLocalizations.of(context)!.startConversation, style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -158,7 +239,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildCreatePostArea(BuildContext context, ThemeData theme) {
+  Widget _buildCreatePostArea(BuildContext context, ThemeData theme, String? userPhoto) {
     return Container(
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.only(bottom: 8),
@@ -175,7 +256,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
               CircleAvatar(
                 radius: 20,
                 backgroundColor: theme.colorScheme.surfaceVariant,
-                backgroundImage: const NetworkImage('https://ui-avatars.com/api/?name=User&background=1D4ED8&color=fff'),
+                backgroundImage: userPhoto != null && userPhoto.isNotEmpty 
+                  ? NetworkImage(userPhoto) 
+                  : const NetworkImage('https://ui-avatars.com/api/?name=User&background=F59E0B&color=fff'),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -188,7 +271,7 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(color: theme.colorScheme.outline),
                     ),
-                    child: Text('Share your professional updates...', 
+                    child: Text(AppLocalizations.of(context)!.shareProfessionalUpdates, 
                       style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w500)),
                   ),
                 ),
@@ -199,9 +282,9 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildPostAction(Icons.image_outlined, 'Photo', Colors.blue, theme),
-              _buildPostAction(Icons.videocam_outlined, 'Video', Colors.green, theme),
-              _buildPostAction(Icons.event_note_outlined, 'Event', Colors.orange, theme),
+              _buildPostAction(Icons.image_outlined, AppLocalizations.of(context)!.postPhoto, Colors.blue, theme),
+              _buildPostAction(Icons.videocam_outlined, AppLocalizations.of(context)!.postVideo, Colors.green, theme),
+              _buildPostAction(Icons.event_note_outlined, AppLocalizations.of(context)!.postEvent, Colors.orange, theme),
             ],
           ),
         ],
@@ -222,55 +305,114 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildPromoCard(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1D4ED8), Color(0xFF1E3A8A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1D4ED8).withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              shape: BoxShape.circle,
+  Widget _buildFeaturedWorkers(ThemeData theme) {
+    final featuredAsync = ref.watch(featuredWorkersProvider);
+    
+    return featuredAsync.when(
+      data: (workers) {
+        if (workers.isEmpty) return const SizedBox.shrink();
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.bolt_rounded, color: Colors.amber, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    AppLocalizations.of(context)!.featuredKarigars,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: const Icon(Icons.verified_user, color: Colors.white, size: 28),
-          ),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Get KI Verified Today',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Boost your profile visibility by 3x and get premium job alerts.',
-                  style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4, fontWeight: FontWeight.w500),
-                ),
-              ],
+            SizedBox(
+              height: 208,
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                scrollDirection: Axis.horizontal,
+                itemCount: workers.length,
+                itemBuilder: (context, index) {
+                  final worker = workers[index];
+                  return Container(
+                    width: 140,
+                    margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    clipBehavior: Clip.hardEdge,
+                    decoration: BoxDecoration(
+                      color: theme.cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.amber.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: InkWell(
+                      onTap: () => context.push('/profile/worker/${worker.uid}'),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircleAvatar(
+                              radius: 30,
+                              backgroundImage: worker.profilePhotoUrl != null && worker.profilePhotoUrl!.isNotEmpty
+                                ? NetworkImage(worker.profilePhotoUrl!)
+                                : null,
+                              child: worker.profilePhotoUrl == null || worker.profilePhotoUrl!.isEmpty
+                                ? const Icon(Icons.person)
+                                : null,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              worker.name,
+                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              worker.skills.isNotEmpty ? worker.skills.first : 'Worker',
+                              style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 11),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text(
+                                'FEATURED',
+                                style: TextStyle(color: Colors.amber, fontSize: 8, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-          const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
-        ],
-      ),
+            const Divider(),
+          ],
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }

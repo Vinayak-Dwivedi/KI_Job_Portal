@@ -6,6 +6,7 @@ class BannerModel {
   final String imageUrl;
   final String? headline;
   final String? subhead;
+  final String? targetRoute;
   final bool isActive;
 
   BannerModel({
@@ -13,6 +14,7 @@ class BannerModel {
     required this.imageUrl,
     this.headline,
     this.subhead,
+    this.targetRoute,
     required this.isActive,
   });
 
@@ -23,6 +25,7 @@ class BannerModel {
       imageUrl: data['imageUrl'] ?? '',
       headline: data['headline'],
       subhead: data['subhead'],
+      targetRoute: data['targetRoute'],
       isActive: data['isActive'] ?? false,
     );
   }

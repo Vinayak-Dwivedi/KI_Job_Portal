@@ -184,39 +184,7 @@ export default function Settings() {
            </Button>
         </div>
       </form>
-      {/* Monetization & Plans */}
-      <Card className="glass-card border-none mt-6">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Coins className="w-5 h-5 text-yellow-500" />
-            <CardTitle>Monetization & Plans</CardTitle>
-          </div>
-          <CardDescription>Configure subscription pricing strings visible on the mobile app.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase opacity-50">Pro Plan Price</label>
-              <Input 
-                placeholder="e.g. ₹299" 
-                value={(formData as any).proPrice || ""} 
-                onChange={(e) => setFormData({ ...formData, proPrice: e.target.value } as any)}
-                className="bg-background/40"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase opacity-50">Elite Plan Price</label>
-              <Input 
-                 placeholder="e.g. ₹799" 
-                 value={(formData as any).elitePrice || ""} 
-                 onChange={(e) => setFormData({ ...formData, elitePrice: e.target.value } as any)}
-                 className="bg-background/40"
-              />
-            </div>
-          </div>
-          <p className="text-[10px] text-muted-foreground italic">Note: These values are synced to the 'platform_settings/subscriptions' document.</p>
-        </CardContent>
-      </Card>
+
 
       {/* Admin Profile Section */}
       <Card className="glass-card border-none mt-6 overflow-hidden">

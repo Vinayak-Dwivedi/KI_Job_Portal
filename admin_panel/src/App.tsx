@@ -18,6 +18,10 @@ import Support from "./pages/Support"
 import Reports from "./pages/Reports"
 import UserProfile from "./pages/UserProfile"
 import Plans from "./pages/Plans"
+import Coupons from "./pages/Coupons"
+import Referrals from "./pages/Referrals"
+import Credits from "./pages/Credits"
+import Chats from "./pages/Chats"
 
 const queryClient = new QueryClient()
 
@@ -36,6 +40,7 @@ function App() {
                 <Route index element={<Dashboard />} />
                 <Route path="revenue" element={<Revenue />} />
                 <Route path="users" element={<Users />} />
+                <Route path="chats" element={<Chats />} />
                 <Route path="verification" element={<Verification />} />
                 <Route path="jobs" element={<Jobs />} />
                 <Route path="posts" element={<Posts />} />
@@ -45,6 +50,9 @@ function App() {
                 <Route path="reports" element={<Reports />} />
                 <Route path="users/:uid" element={<UserProfile />} />
                 <Route path="plans" element={<Plans />} />
+                <Route path="coupons" element={<Coupons />} />
+                <Route path="referrals" element={<Referrals />} />
+                <Route path="credits" element={<Credits />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
               

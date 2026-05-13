@@ -48,6 +48,20 @@ export default function Login() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError("Please enter your admin email to reset password.");
+      return;
+    }
+    try {
+      const { sendPasswordResetEmail } = await import("firebase/auth");
+      await sendPasswordResetEmail(auth, email);
+      setError("Password reset email sent. Check your inbox.");
+    } catch (err: any) {
+      setError(err.message || "Failed to send reset email.");
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
       {/* Background Orbs */}
@@ -105,6 +119,16 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                >
+                  Forgot Password?
+                </button>
               </div>
 
               <Button 

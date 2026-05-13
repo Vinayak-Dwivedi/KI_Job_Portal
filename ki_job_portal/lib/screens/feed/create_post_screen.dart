@@ -3,30 +3,77 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/post_service.dart';
-// import '../../widgets/feed/post_pending_banner.dart';
 import '../../providers/worker_provider.dart';
 import '../../providers/employer_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../widgets/common/location_picker_sheet.dart';
+import '../../core/services/location_service.dart';
 
 class CreatePostScreen extends ConsumerStatefulWidget {
-  const CreatePostScreen({super.key});
+  final Map<String, dynamic>? post;
+  const CreatePostScreen({super.key, this.post});
 
   @override
   ConsumerState<CreatePostScreen> createState() => _CreatePostScreenState();
 }
 
 class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
-  final TextEditingController _descController = TextEditingController();
-  final TextEditingController _jobTitleController = TextEditingController();
-  final TextEditingController _jobSalaryController = TextEditingController();
-  final TextEditingController _jobLocationController = TextEditingController();
-  final TextEditingController _jobExperienceController = TextEditingController();
-  final TextEditingController _jobSkillsController = TextEditingController();
+  late final TextEditingController _descController;
+  late final TextEditingController _jobTitleController;
+  late final TextEditingController _jobSalaryController;
+  late final TextEditingController _jobLocationController;
+  late final TextEditingController _jobExperienceController;
+  late final TextEditingController _jobSkillsController;
+  late final TextEditingController _jobSubLocationController;
+
+  List<String> _skillCategories = [];
+
+  @override
+  void initState() {
+    super.initState();
+    final post = widget.post;
+    _descController = TextEditingController(text: post?['text'] ?? '');
+    _jobTitleController = TextEditingController(text: post?['jobTitle'] ?? '');
+    _jobSalaryController = TextEditingController(text: post?['jobSalary'] ?? '');
+    _jobLocationController = TextEditingController(text: post?['location'] ?? '');
+    _jobExperienceController = TextEditingController(text: post?['jobExperience'] ?? '');
+    _jobSkillsController = TextEditingController(text: post?['jobSkills'] ?? '');
+    _jobSubLocationController = TextEditingController(text: post?['subLocation'] ?? '');
+    
+    _fetchSkillCategories();
+    
+    if (post != null) {
+      _isJobPost = post['isJobPost'] ?? false;
+      _isAvailabilityPost = post['isAvailabilityPost'] ?? false;
+      _visibility = post['visibility'] ?? 'public';
+      
+      if (post['eventDate'] != null) {
+        _eventDate = (post['eventDate'] as Timestamp).toDate();
+        _eventTime = TimeOfDay.fromDateTime(_eventDate!);
+        _eventLocation = post['eventLocation'];
+        _eventSubLocation = post['eventSubLocation'];
+        _eventTitle = post['eventTitle'];
+      }
+      
+      if (post['media'] != null) {
+        final List<dynamic> mediaList = post['media'];
+        for (var m in mediaList) {
+          _existingMedia.add({
+            'url': m['url'],
+            'type': m['type'],
+          });
+        }
+      }
+    }
+  }
+
   final ImagePicker _picker = ImagePicker();
   final List<Map<String, dynamic>> _selectedMedia = []; // {'file': File, 'type': 'image' or 'video'}
+  final List<Map<String, dynamic>> _existingMedia = []; // {'url': String, 'type': 'image' or 'video'}
 
   bool _isLoading = false;
   bool _isJobPost = false;
@@ -36,7 +83,10 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
   DateTime? _eventDate;
   TimeOfDay? _eventTime;
   String? _eventLocation;
+  String? _eventSubLocation;
   String? _eventTitle;
+  bool _isAutoDetected = false;
+  bool _isDetectingLocation = false;
 
   // Visibility state
   String _visibility = 'public';
@@ -55,15 +105,32 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       );
       
       if (media.isNotEmpty) {
-        setState(() {
-          for (var item in media) {
-            if (_selectedMedia.length < 4) {
-              final extension = item.path.split('.').last.toLowerCase();
-              final isVideo = ['mp4', 'mov', 'avi', 'mkv', 'webm'].contains(extension);
-              _selectedMedia.add({'file': File(item.path), 'type': isVideo ? 'video' : 'image'});
+        for (var item in media) {
+          if (_selectedMedia.length < 4) {
+            final extension = item.path.split('.').last.toLowerCase();
+            final isVideo = ['mp4', 'mov', 'avi', 'mkv', 'webm'].contains(extension);
+            
+            if (isVideo) {
+              final controller = VideoPlayerController.file(File(item.path));
+              await controller.initialize();
+              final duration = controller.value.duration;
+              await controller.dispose();
+              
+              if (duration.inSeconds > 20) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Videos cannot exceed 20 seconds.')),
+                  );
+                }
+                continue;
+              }
             }
+
+            setState(() {
+              _selectedMedia.add({'file': File(item.path), 'type': isVideo ? 'video' : 'image'});
+            });
           }
-        });
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -84,6 +151,20 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       // Pick video from camera
       final XFile? video = await _picker.pickVideo(source: ImageSource.camera);
       if (video != null) {
+        final controller = VideoPlayerController.file(File(video.path));
+        await controller.initialize();
+        final duration = controller.value.duration;
+        await controller.dispose();
+        
+        if (duration.inSeconds > 20) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Videos cannot exceed 20 seconds.')),
+            );
+          }
+          return;
+        }
+
         setState(() {
           _selectedMedia.add({'file': File(video.path), 'type': 'video'});
         });
@@ -103,7 +184,48 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     _jobLocationController.dispose();
     _jobExperienceController.dispose();
     _jobSkillsController.dispose();
+    _jobSubLocationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _autoDetectLocation({
+    required Function(String location, String subLocation) onDetected,
+    VoidCallback? onStateChanged,
+  }) async {
+    setState(() => _isDetectingLocation = true);
+    if (onStateChanged != null) onStateChanged();
+    try {
+      final position = await LocationService.getCurrentLocation();
+      if (position != null) {
+        final locationData = await LocationService.getLocationFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+
+        if (locationData != null && mounted) {
+          setState(() {
+            _isAutoDetected = true;
+          });
+          onDetected(
+            locationData['fullLocation'] ?? locationData['city'],
+            locationData['subLocation'],
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Enable location for auto-fill.')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Error auto-detecting location: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isDetectingLocation = false);
+        if (onStateChanged != null) onStateChanged();
+      }
+    }
   }
 
   void _showVisibilitySheet() {
@@ -144,9 +266,155 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     );
   }
 
+  Future<void> _fetchSkillCategories() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('job_categories')
+          .where('isActive', isEqualTo: true)
+          .get();
+      setState(() {
+        _skillCategories = snapshot.docs.map((doc) => doc['name'].toString()).toList();
+      });
+    } catch (e) {
+      debugPrint("Error fetching skill categories: $e");
+    }
+  }
+
+  void _showAvailabilityDialog() {
+    final theme = Theme.of(context);
+    final isWorker = ref.read(authProvider)?.role == 'worker';
+    
+    String? tempSkill = _jobTitleController.text.isNotEmpty ? _jobTitleController.text : (_skillCategories.isNotEmpty ? _skillCategories.first : null);
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text(isWorker ? 'List Availability' : 'Post a Job', style: const TextStyle(fontWeight: FontWeight.bold)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isWorker) ...[
+                    const Text("Select your Skill / Expertise", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: theme.dividerColor),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: tempSkill,
+                          isExpanded: true,
+                          hint: const Text("Select Skill"),
+                          items: _skillCategories.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                          onChanged: (val) => setDialogState(() => tempSkill = val),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    _buildJobField('Job Title', _jobTitleController, theme),
+                  ],
+                  const SizedBox(height: 12),
+                  _buildJobField(isWorker ? 'Expected Pay' : 'Salary / Rate', _jobSalaryController, theme),
+                  const SizedBox(height: 12),
+                  _buildJobField(
+                    'Location', 
+                    _jobLocationController, 
+                    theme,
+                    readOnly: true,
+                    suffixIcon: _isDetectingLocation 
+                      ? const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.my_location),
+                          onPressed: () => _autoDetectLocation(
+                            onDetected: (loc, sub) {
+                              setDialogState(() {
+                                _jobLocationController.text = loc;
+                                _jobSubLocationController.text = sub;
+                              });
+                            },
+                            onStateChanged: () => setDialogState(() {}),
+                          ),
+                        ),
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => LocationPickerSheet(
+                          onLocationSelected: (loc) {
+                            setDialogState(() {
+                              _jobLocationController.text = loc['city'] ?? loc['description'];
+                              _jobSubLocationController.text = loc['subLocation'] ?? '';
+                            });
+                            setState(() {
+                              _isAutoDetected = false;
+                            });
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildJobField('Sub-Location / Area', _jobSubLocationController, theme),
+                  if (_isAutoDetected)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Row(
+                        children: [
+                          Icon(Icons.location_on, size: 10, color: Colors.green.shade600),
+                          const SizedBox(width: 4),
+                          Text(
+                            "📍 Auto-detected",
+                            style: TextStyle(color: Colors.green.shade600, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  _buildJobField('Experience (e.g. 5 Years)', _jobExperienceController, theme),
+                  const SizedBox(height: 12),
+                  _buildJobField('Specific Skills', _jobSkillsController, theme),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    if (isWorker) {
+                      _jobTitleController.text = tempSkill ?? '';
+                      _isAvailabilityPost = true;
+                      _isJobPost = false;
+                    } else {
+                      _isJobPost = true;
+                      _isAvailabilityPost = false;
+                    }
+                  });
+                  Navigator.pop(context);
+                },
+                child: const Text('Save Details')
+              )
+            ],
+          );
+        });
+      }
+    );
+  }
+
   void _showEventDialog() {
     final titleCtrl = TextEditingController(text: _eventTitle);
     final locCtrl = TextEditingController(text: _eventLocation);
+    final subLocCtrl = TextEditingController(text: _eventSubLocation);
     DateTime? tempDate = _eventDate;
     TimeOfDay? tempTime = _eventTime;
 
@@ -161,8 +429,65 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                   TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Event Title')),
-                   TextField(controller: locCtrl, decoration: const InputDecoration(labelText: 'Location')),
+                   _buildJobField('Event Title', titleCtrl, theme),
+                   const SizedBox(height: 12),
+                   _buildJobField(
+                     'Location', 
+                     locCtrl, 
+                     theme,
+                     readOnly: true,
+                     suffixIcon: _isDetectingLocation 
+                       ? const Padding(
+                           padding: EdgeInsets.all(12.0),
+                           child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                         )
+                       : IconButton(
+                           icon: const Icon(Icons.my_location),
+                           onPressed: () => _autoDetectLocation(
+                             onDetected: (loc, sub) {
+                               setDialogState(() {
+                                 locCtrl.text = loc;
+                                 subLocCtrl.text = sub;
+                               });
+                             },
+                             onStateChanged: () => setDialogState(() {}),
+                           ),
+                         ),
+                     onTap: () {
+                       showModalBottomSheet(
+                         context: context,
+                         isScrollControlled: true,
+                         backgroundColor: Colors.transparent,
+                         builder: (context) => LocationPickerSheet(
+                           onLocationSelected: (loc) {
+                             setDialogState(() {
+                               locCtrl.text = loc['city'] ?? loc['description'];
+                               subLocCtrl.text = loc['subLocation'] ?? '';
+                             });
+                             setState(() {
+                               _isAutoDetected = false;
+                             });
+                           },
+                         ),
+                       );
+                     },
+                   ),
+                   if (_isAutoDetected)
+                     Padding(
+                       padding: const EdgeInsets.only(top: 4.0),
+                       child: Row(
+                         children: [
+                           Icon(Icons.location_on, size: 10, color: Colors.green.shade600),
+                           const SizedBox(width: 4),
+                           Text(
+                             "📍 Auto-detected",
+                             style: TextStyle(color: Colors.green.shade600, fontSize: 10, fontWeight: FontWeight.bold),
+                           ),
+                         ],
+                       ),
+                     ),
+                   const SizedBox(height: 12),
+                   _buildJobField('Sub-Location / Area', subLocCtrl, theme),
                    const SizedBox(height: 16),
                    ListTile(
                      contentPadding: EdgeInsets.zero,
@@ -192,6 +517,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                   setState(() {
                     _eventTitle = titleCtrl.text.trim();
                     _eventLocation = locCtrl.text.trim();
+                    _eventSubLocation = subLocCtrl.text.trim();
                     _eventDate = tempDate;
                     _eventTime = tempTime;
                   });
@@ -249,29 +575,73 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         employerCompany = employer?.companyName;
       }
 
-      await PostService.createPost(
-        uid: auth.uid,
-        name: name,
-        role: auth.role,
-        text: desc,
-        mediaFiles: _selectedMedia,
-        isAdmin: auth.role == 'admin',
-        profilePhotoUrl: photoUrl,
-        isVerified: isVerified,
-        location: (_isJobPost || _isAvailabilityPost) ? _jobLocationController.text.trim() : 'Current Location',
-        isJobPost: _isJobPost,
-        isAvailabilityPost: _isAvailabilityPost,
-        jobTitle: (_isJobPost || _isAvailabilityPost) ? _jobTitleController.text.trim() : null,
-        jobSalary: (_isJobPost || _isAvailabilityPost) ? _jobSalaryController.text.trim() : null,
-        jobExperience: (_isJobPost || _isAvailabilityPost) ? _jobExperienceController.text.trim() : null,
-        jobSkills: (_isJobPost || _isAvailabilityPost) ? _jobSkillsController.text.trim() : null,
-        companyName: _isJobPost ? (employerCompany?.isNotEmpty == true ? employerCompany : name) : null,
-        eventDate: _eventDate,
-        eventTime: _eventTime?.format(context),
-        eventLocation: _eventLocation?.isNotEmpty == true ? _eventLocation : null,
-        eventTitle: _eventTitle?.isNotEmpty == true ? _eventTitle : null,
-        visibility: _visibility,
-      );
+      if (widget.post != null) {
+        // Updating existing post
+        await PostService.updatePost(
+          widget.post!['id'],
+          {
+            'text': desc,
+            'location': (_isJobPost || _isAvailabilityPost) ? _jobLocationController.text.trim() : 'Current Location',
+            'isJobPost': _isJobPost,
+            'isAvailabilityPost': _isAvailabilityPost,
+            'jobTitle': (_isJobPost || _isAvailabilityPost) ? _jobTitleController.text.trim() : null,
+            'jobSalary': (_isJobPost || _isAvailabilityPost) ? _jobSalaryController.text.trim() : null,
+            'jobExperience': (_isJobPost || _isAvailabilityPost) ? _jobExperienceController.text.trim() : null,
+            'jobSkills': (_isJobPost || _isAvailabilityPost) ? _jobSkillsController.text.trim() : null,
+            'subLocation': (_isJobPost || _isAvailabilityPost) ? _jobSubLocationController.text.trim() : null,
+            'eventDate': _eventDate != null ? Timestamp.fromDate(_eventDate!) : null,
+            'eventTime': _eventTime?.format(context),
+            'eventLocation': _eventLocation,
+            'eventSubLocation': _eventSubLocation,
+            'eventTitle': _eventTitle,
+            'visibility': _visibility,
+            'media': [
+              ..._existingMedia, // Keep existing media
+            ],
+          },
+          isAdmin: auth.role == 'admin',
+          newMediaFiles: _selectedMedia,
+        );
+
+        if (auth.role != 'admin' && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Post sent for re-approval after editing.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } else {
+        // Creating new post
+        await PostService.createPost(
+          uid: auth.uid,
+          name: name,
+          role: auth.role,
+          text: desc,
+          mediaFiles: _selectedMedia,
+          isAdmin: auth.role == 'admin',
+          profilePhotoUrl: photoUrl,
+          isVerified: isVerified,
+          location: (_isJobPost || _isAvailabilityPost) ? _jobLocationController.text.trim() : 'Current Location',
+          isJobPost: _isJobPost,
+          isAvailabilityPost: _isAvailabilityPost,
+          jobTitle: (_isJobPost || _isAvailabilityPost) ? _jobTitleController.text.trim() : null,
+          jobSalary: (_isJobPost || _isAvailabilityPost) ? _jobSalaryController.text.trim() : null,
+          jobExperience: (_isJobPost || _isAvailabilityPost) ? _jobExperienceController.text.trim() : null,
+          jobSkills: (_isJobPost || _isAvailabilityPost) ? _jobSkillsController.text.trim() : null,
+          subLocation: (_isJobPost || _isAvailabilityPost) ? _jobSubLocationController.text.trim() : null,
+          companyName: _isJobPost ? (employerCompany?.isNotEmpty == true ? employerCompany : name) : null,
+          eventDate: _eventDate,
+          eventTime: _eventTime?.format(context),
+          eventLocation: _eventLocation?.isNotEmpty == true ? _eventLocation : null,
+          eventSubLocation: _eventSubLocation?.isNotEmpty == true ? _eventSubLocation : null,
+          eventTitle: _eventTitle?.isNotEmpty == true ? _eventTitle : null,
+          visibility: _visibility,
+          isFeatured: isWorker 
+              ? ref.read(workerProvider)?.isFeatured 
+              : ref.read(employerProvider)?.isFeatured,
+        );
+      }
 
       if (mounted) {
         context.pop();
@@ -311,7 +681,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           icon: Icon(Icons.close, color: theme.colorScheme.onSurface),
           onPressed: () => context.pop(),
         ),
-        title: Text('New Post', 
+        title: Text(widget.post != null ? 'Edit Post' : 'New Post', 
           style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w900, fontSize: 20)),
         actions: [
           Padding(
@@ -334,6 +704,24 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       ),
       body: Column(
         children: [
+          if (widget.post != null && auth?.role != 'admin')
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.orange.withOpacity(0.1),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange, size: 16),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Note: Editing this post will require re-approval from moderators.',
+                      style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
@@ -400,83 +788,58 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                   ),
                   const SizedBox(height: 16),
                   
-                  // Role-specific toggles
-                  if (!isWorker)
+                  // Summary of special post type
+                  if (_isJobPost || _isAvailabilityPost || _eventDate != null)
                     Container(
                       margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: theme.cardColor,
+                        color: AppColors.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: theme.colorScheme.outline),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                       ),
-                      child: SwitchListTile(
-                        value: _isJobPost,
-                        onChanged: (val) {
-                          setState(() {
-                            _isJobPost = val;
-                            if (val) _isAvailabilityPost = false;
-                          });
-                        },
-                        title: Text('Post as a Job', style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold)),
-                        subtitle: Text('Will be featured in workers recommended jobs', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 12)),
-                        activeColor: AppColors.primary,
-                      ),
-                    ),
-                    
-                  if (isWorker)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: theme.cardColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: theme.colorScheme.outline),
-                      ),
-                      child: SwitchListTile(
-                        value: _isAvailabilityPost,
-                        onChanged: (val) {
-                          setState(() {
-                            _isAvailabilityPost = val;
-                            if (val) _isJobPost = false;
-                          });
-                        },
-                        title: Text('List as available for work', style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold)),
-                        subtitle: Text('Tell employers about your skills and expected pay', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 12)),
-                        activeColor: AppColors.primary,
+                      child: Row(
+                        children: [
+                          Icon(
+                            _eventDate != null ? Icons.event : (_isJobPost ? Icons.work : Icons.engineering),
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _eventDate != null ? 'Event: $_eventTitle' : (_isJobPost ? 'Job: ${_jobTitleController.text}' : 'Availability: ${_jobTitleController.text}'),
+                                  style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                                Text(
+                                  _eventDate != null ? _eventLocation ?? '' : _jobLocationController.text,
+                                  style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit, size: 18),
+                            onPressed: _eventDate != null ? _showEventDialog : _showAvailabilityDialog,
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            onPressed: () {
+                              setState(() {
+                                _isJobPost = false;
+                                _isAvailabilityPost = false;
+                                _eventDate = null;
+                                _eventTitle = null;
+                              });
+                            },
+                          ),
+                        ],
                       ),
                     ),
 
-                  if (_isJobPost || _isAvailabilityPost)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildJobField(
-                          isWorker ? 'Position / Expertise (e.g. Senior Welder)' : 'Job Title (e.g. Senior Welder)', 
-                          _jobTitleController, 
-                          theme
-                        ),
-                        const SizedBox(height: 12),
-                        _buildJobField(
-                          isWorker ? 'Expected Pay (e.g. ₹35,000/mo)' : 'Salary / Rate (e.g. ₹35,000/mo)', 
-                          _jobSalaryController, 
-                          theme
-                        ),
-                        const SizedBox(height: 12),
-                        _buildJobField('Location (e.g. Mumbai, MH)', _jobLocationController, theme),
-                        const SizedBox(height: 12),
-                        _buildJobField(
-                          isWorker ? 'My Experience (e.g. 5 Years)' : 'Experience Required (e.g. 5 Years)', 
-                          _jobExperienceController, 
-                          theme
-                        ),
-                        const SizedBox(height: 12),
-                        _buildJobField(
-                          isWorker ? 'My Top Skills (e.g. Plumbing, Wiring)' : 'Skills Required (e.g. Plumbing, Wiring)', 
-                          _jobSkillsController, 
-                          theme
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
                   const SizedBox(height: 16),
                   if (_selectedMedia.isNotEmpty)
                     Wrap(
@@ -517,34 +880,52 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                         );
                       }).toList(),
                     ),
-                  if (_eventTitle != null && _eventTitle!.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(top: 16),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: theme.colorScheme.surfaceVariant.withOpacity(0.5), borderRadius: BorderRadius.circular(8)),
-                      child: Row(
-                         children: [
-                           const Icon(Icons.event, color: AppColors.primary),
-                           const SizedBox(width: 12),
-                           Expanded(
-                             child: Column(
-                               crossAxisAlignment: CrossAxisAlignment.start,
-                               children: [
-                                  Text(_eventTitle!, style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
-                                  if (_eventDate != null) Text('${_eventDate!.day}/${_eventDate!.month}/${_eventDate!.year} ${(_eventTime != null) ? _eventTime!.format(context) : ""}', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
-                                  if (_eventLocation != null && _eventLocation!.isNotEmpty) Text(_eventLocation!, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
-                               ],
-                             )
-                           ),
-                           IconButton(icon: Icon(Icons.close, color: theme.colorScheme.onSurfaceVariant, size: 20), onPressed: () => setState(() { _eventTitle = null; _eventDate = null; _eventLocation = null; _eventTime = null; }))
-                         ]
-                      )
+                  if (_existingMedia.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _existingMedia.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final mediaItem = entry.value;
+                          final String url = mediaItem['url'];
+                          final bool isVideo = mediaItem['type'] == 'video';
+
+                          return Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  width: 100,
+                                  height: 100,
+                                  color: theme.colorScheme.surfaceVariant,
+                                  child: isVideo
+                                      ? Icon(Icons.videocam, size: 40, color: theme.colorScheme.onSurfaceVariant)
+                                      : Image.network(url, fit: BoxFit.cover),
+                                ),
+                              ),
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: GestureDetector(
+                                  onTap: () => setState(() => _existingMedia.removeAt(index)),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                                    child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                      ),
                     ),
                 ],
               ),
             ),
           ),
-          
           /// ── Bottom Toolbar ────────────────────────────
           Container(
             padding: EdgeInsets.only(
@@ -562,6 +943,12 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                 _buildToolbarItem(Icons.image_outlined, 'Photo', theme, _pickImages),
                 _buildToolbarItem(Icons.camera_alt_outlined, 'Video', theme, _pickCamera),
                 _buildToolbarItem(Icons.event_outlined, 'Event', theme, _showEventDialog),
+                _buildToolbarItem(
+                  isWorker ? Icons.engineering_outlined : Icons.work_outline, 
+                  isWorker ? 'Availability' : 'Job', 
+                  theme, 
+                  _showAvailabilityDialog
+                ),
                 const Spacer(),
                 _buildToolbarItem(Icons.more_horiz, 'Visibility', theme, _showVisibilitySheet),
               ],
@@ -580,13 +967,16 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     );
   }
 
-  Widget _buildJobField(String hint, TextEditingController controller, ThemeData theme) {
+  Widget _buildJobField(String hint, TextEditingController controller, ThemeData theme, {bool readOnly = false, VoidCallback? onTap, Widget? suffixIcon}) {
     return TextField(
       controller: controller,
+      readOnly: readOnly,
+      onTap: onTap,
       style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 14),
+        suffixIcon: suffixIcon,
         filled: true,
         fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),

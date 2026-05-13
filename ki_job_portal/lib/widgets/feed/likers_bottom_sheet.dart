@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -95,7 +96,14 @@ class _LikerTile extends ConsumerWidget {
 
     return userAsync.when(
       data: (user) {
-        if (user == null) return const SizedBox.shrink();
+        if (user == null) {
+          // Fallback tile for null user data
+          return ListTile(
+            leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+            title: Text('Unknown User', style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14)),
+            subtitle: Text('ID: ${uid.substring(0, min(8, uid.length))}', style: TextStyle(fontSize: 10)),
+          );
+        }
 
         final name = user['name'] ?? 'Unknown User';
         final photoUrl = user['profilePhotoUrl'] ?? user['photoUrl'];
@@ -132,7 +140,11 @@ class _LikerTile extends ConsumerWidget {
         );
       },
       loading: () => const ListTile(title: Text('Loading...')),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, __) => ListTile(
+        leading: const CircleAvatar(child: Icon(Icons.error_outline)),
+        title: const Text('Error loading user'),
+        subtitle: Text('ID: ${uid.substring(0, min(8, uid.length))}', style: const TextStyle(fontSize: 10)),
+      ),
     );
   }
 }

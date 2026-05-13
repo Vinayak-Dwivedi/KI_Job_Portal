@@ -43,7 +43,7 @@ class AdminUsersScreen extends ConsumerWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: isBanned ? Colors.red.withValues(alpha: 0.1) : Colors.blue.withValues(alpha: 0.1),
+                    backgroundColor: isBanned ? Colors.red.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
                     child: Icon(isBanned ? Icons.block : Icons.person, color: isBanned ? Colors.red : Colors.blue),
                   ),
                   title: Text(user['name'] ?? 'Unknown User', style: const TextStyle(fontWeight: FontWeight.bold)),

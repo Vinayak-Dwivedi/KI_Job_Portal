@@ -5,6 +5,7 @@ class DocumentModel {
   final String name;
   final String url;
   final String type; // e.g., 'pdf', 'image', 'other'
+  final String? category; // e.g., 'ID Proof', 'Address Proof', 'GST'
   final DateTime timestamp;
   final String? userId; // Metadata
   final String? phone;  // Metadata
@@ -14,6 +15,7 @@ class DocumentModel {
     required this.name,
     required this.url,
     required this.type,
+    this.category,
     required this.timestamp,
     this.userId,
     this.phone,
@@ -25,6 +27,7 @@ class DocumentModel {
       'name': name,
       'url': url,
       'type': type,
+      'category': category,
       'timestamp': Timestamp.fromDate(timestamp),
       'userId': userId,
       'phone': phone,
@@ -37,6 +40,7 @@ class DocumentModel {
       name: map['name'] ?? '',
       url: map['url'] ?? '',
       type: map['type'] ?? 'other',
+      category: map['category'],
       timestamp: (map['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       userId: map['userId'],
       phone: map['phone'],

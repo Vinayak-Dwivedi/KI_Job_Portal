@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'subscription_service.dart';
+import 'admin_service.dart';
 
 class PostService {
   static final _firestore = FirebaseFirestore.instance;
@@ -46,12 +48,15 @@ class PostService {
     String? jobSalary,
     String? jobExperience,
     String? jobSkills,
+    String? subLocation,
     String? companyName,
     DateTime? eventDate,
     String? eventTime,
     String? eventLocation,
+    String? eventSubLocation,
     String? eventTitle,
     String visibility = 'public',
+    bool? isFeatured,
   }) async {
     List<Map<String, String>> media = [];
     String? firstImageUrl;
@@ -66,7 +71,7 @@ class PostService {
       }
     }
 
-    await _firestore.collection('posts').add({
+    final postRef = await _firestore.collection('posts').add({
       'uid': uid,
       'name': name,
       'role': role,
@@ -83,18 +88,124 @@ class PostService {
       if (jobSalary != null) 'jobSalary': jobSalary,
       if (jobExperience != null) 'jobExperience': jobExperience,
       if (jobSkills != null) 'jobSkills': jobSkills,
+      if (subLocation != null) 'subLocation': subLocation,
       if (companyName != null) 'companyName': companyName,
       if (eventDate != null) 'eventDate': Timestamp.fromDate(eventDate),
       if (eventTime != null) 'eventTime': eventTime,
       if (eventLocation != null) 'eventLocation': eventLocation,
+      if (eventSubLocation != null) 'eventSubLocation': eventSubLocation,
       if (eventTitle != null) 'eventTitle': eventTitle,
       'visibility': visibility,
+      'status': isAdmin ? 'approved' : 'pending',
       'likes': 0,
       'comments': 0,
       'createdAt': FieldValue.serverTimestamp(),
+      'isFeatured': isFeatured ?? false,
+      if (isFeatured == true) 'featuredUntil': Timestamp.fromDate(DateTime.now().add(const Duration(days: 1))),
     });
+
+    // 🔔 Notify Followers
+    if (!isAdmin) {
+      _notifyFollowers(uid, name, postRef.id);
+    }
   }
 
+  static Future<void> _notifyFollowers(String authorUid, String authorName, String postId) async {
+    try {
+      final followersSnap = await _firestore
+          .collection('users')
+          .doc(authorUid)
+          .collection('followers')
+          .get();
+
+      if (followersSnap.docs.isEmpty) return;
+
+      final batch = _firestore.batch();
+      for (var doc in followersSnap.docs) {
+        final followerUid = doc.id;
+        final notificationRef = _firestore
+            .collection('users')
+            .doc(followerUid)
+            .collection('notifications')
+            .doc();
+
+        batch.set(notificationRef, {
+          'title': 'New post from $authorName',
+          'body': '$authorName just shared a new update. Check it out!',
+          'type': 'social',
+          'postId': postId,
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint("Error notifying followers: $e");
+    }
+  }
+
+
+  // 🔥 Update Post
+  static Future<void> updatePost(String postId, Map<String, dynamic> data, {bool isAdmin = false, List<Map<String, dynamic>>? newMediaFiles}) async {
+    List<Map<String, String>> newUploadedMedia = [];
+    
+    // Upload any newly added media files
+    if (newMediaFiles != null && newMediaFiles.isNotEmpty) {
+      for (var mediaFile in newMediaFiles) {
+        final uploaded = await uploadMediaFile(mediaFile['file'], mediaFile['type']);
+        newUploadedMedia.add(uploaded);
+      }
+    }
+
+    // Append newly uploaded media to the existing media list
+    if (newUploadedMedia.isNotEmpty) {
+      final existingMedia = (data['media'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      data['media'] = [
+        ...existingMedia,
+        ...newUploadedMedia,
+      ];
+    }
+
+    // Recalculate imageUrl for legacy fallback
+    final allMedia = data['media'] as List?;
+    if (allMedia != null && allMedia.isNotEmpty) {
+      final allMediaTyped = allMedia.cast<Map<String, dynamic>>();
+      final firstImage = allMediaTyped.where((m) => m['type'] == 'image').isNotEmpty
+          ? allMediaTyped.firstWhere((m) => m['type'] == 'image')
+          : null;
+      data['imageUrl'] = firstImage != null ? firstImage['url'] : allMediaTyped.first['url'];
+    }
+
+    if (isAdmin) {
+      await _firestore.collection('posts').doc(postId).update({
+        ...data,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      // Store edit for admin review
+      await _firestore.collection('posts').doc(postId).update({
+        'pendingEdit': {
+          ...data,
+          'submittedAt': FieldValue.serverTimestamp(),
+        },
+        'hasPendingEdit': true,
+      });
+
+      // 🔔 Notify all admins that this post has a pending edit
+      try {
+        final postDoc = await _firestore.collection('posts').doc(postId).get();
+        final posterName = postDoc.data()?['name'] ?? 'A user';
+        AdminService.notifyAdminsOfPendingEdit(postId, posterName);
+      } catch (e) {
+        debugPrint('Could not notify admins of pending edit: \$e');
+      }
+    }
+  }
+
+  // 🔥 Delete Post
+  static Future<void> deletePost(String postId) async {
+    await _firestore.collection('posts').doc(postId).delete();
+  }
 
   // 🔥 Get Single Post
   static Future<Map<String, dynamic>?> getPost(String postId) async {
@@ -112,7 +223,7 @@ class PostService {
   }
 
   // 🔥 Social Interactions
-  static Future<void> toggleLike(String postId, String uid) async {
+  static Future<void> toggleLike(String postId, String uid, String likerName) async {
     final postRef = _firestore.collection('posts').doc(postId);
     final likeRef = postRef.collection('likes').doc(uid);
 
@@ -131,6 +242,20 @@ class PostService {
           'createdAt': FieldValue.serverTimestamp(),
         });
         transaction.update(postRef, {'likes': FieldValue.increment(1)});
+
+        final postUid = postDoc.data()?['uid'];
+        if (postUid != null && postUid != uid) {
+          final notifRef = _firestore.collection('users').doc(postUid).collection('notifications').doc();
+          transaction.set(notifRef, {
+            'title': '$likerName liked your post',
+            'body': 'Your post is getting some love! Click to see the post.',
+            'type': 'post_like',
+            'postId': postId,
+            'actorUid': uid,
+            'isRead': false,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
       }
     });
   }
@@ -140,12 +265,110 @@ class PostService {
     final commentRef = postRef.collection('comments').doc();
 
     return _firestore.runTransaction((transaction) async {
+      final postDoc = await transaction.get(postRef);
+      
       transaction.set(commentRef, {
         ...commentData,
         'createdAt': FieldValue.serverTimestamp(),
       });
       transaction.update(postRef, {'comments': FieldValue.increment(1)});
+
+      if (postDoc.exists) {
+        final postUid = postDoc.data()?['uid'];
+        final commenterUid = commentData['uid'];
+        final commenterName = commentData['name'] ?? 'Someone';
+        
+        if (postUid != null && postUid != commenterUid) {
+          final notifRef = _firestore.collection('users').doc(postUid).collection('notifications').doc();
+          transaction.set(notifRef, {
+            'title': '$commenterName commented on your post',
+            'body': 'Check out what they said about your post!',
+            'type': 'post_comment',
+            'postId': postId,
+            'actorUid': commenterUid,
+            'isRead': false,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
     });
+  }
+
+  static Future<void> notifyShare(String originalPostId, String uid, String sharerName, String newPostId) async {
+    final postRef = _firestore.collection('posts').doc(originalPostId);
+    final postDoc = await postRef.get();
+    if (!postDoc.exists) return;
+
+    final postUid = postDoc.data()?['uid'];
+    if (postUid != null && postUid != uid) {
+      final notifRef = _firestore.collection('users').doc(postUid).collection('notifications').doc();
+      await notifRef.set({
+        'title': '$sharerName shared your post',
+        'body': 'Your post is reaching more people! Click to see the post.',
+        'type': 'post_share',
+        'postId': newPostId,
+        'actorUid': uid,
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  static Future<void> sharePost({
+    required String originalPostId,
+    required String sharerUid,
+    required String sharerName,
+    String? sharerPhotoUrl,
+    String? shareCaption,
+    String privacy = 'public',
+  }) async {
+    final originalPost = await getPost(originalPostId);
+    if (originalPost == null) throw Exception('Original post not found');
+
+    // Prevent duplicate repost spam (check if user already shared this post in last 24h)
+    final recentShare = await _firestore
+        .collection('posts')
+        .where('sharedByUserId', isEqualTo: sharerUid)
+        .where('originalPostId', isEqualTo: originalPostId)
+        .get();
+
+    final isRecentlyShared = recentShare.docs.any((doc) {
+      final createdAt = doc.data()['createdAt'] as Timestamp?;
+      if (createdAt == null) return false;
+      return createdAt.toDate().isAfter(DateTime.now().subtract(const Duration(days: 1)));
+    });
+
+    if (isRecentlyShared) {
+      throw Exception('You have already shared this post recently.');
+    }
+
+    final newPostRef = await _firestore.collection('posts').add({
+      ...originalPost,
+      'postId': '', // New ID will be generated
+      'id': '',
+      'isShared': true,
+      'sharedByUserId': sharerUid,
+      'sharedByUserName': sharerName,
+      'sharedByUserPhotoUrl': sharerPhotoUrl,
+      'shareCaption': shareCaption,
+      'originalPostId': originalPostId,
+      'originalPostAuthorId': originalPost['uid'],
+      'originalPostAuthorName': originalPost['name'],
+      'originalCreatedAt': originalPost['createdAt'],
+      'createdAt': FieldValue.serverTimestamp(),
+      'likes': 0,
+      'comments': 0,
+      'shares': (originalPost['shares'] ?? 0) + 1,
+      'privacy': privacy,
+      'status': 'approved', // Shared posts are auto-approved for now
+    });
+
+    // Increment shares counter on the original post
+    await _firestore.collection('posts').doc(originalPostId).update({
+      'shares': FieldValue.increment(1),
+    });
+
+    await notifyShare(originalPostId, sharerUid, sharerName, newPostRef.id);
   }
 
   static Stream<List<Map<String, dynamic>>> getComments(String postId) {
@@ -229,32 +452,117 @@ class PostService {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  // 📋 JOB APPLICATIONS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  static Future<void> applyToJob(String postId, String workerUid, Map<String, dynamic> workerData) async {
+    final canApply = await SubscriptionService.deductApplication(workerUid);
+    if (!canApply) {
+      throw Exception('Daily application limit reached for your plan. Upgrade for more.');
+    }
+    
+    await _firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('applications')
+        .doc(workerUid)
+        .set({
+      ...workerData,
+      'uid': workerUid,
+      'status': 'pending', // pending, shortlisted, rejected
+      'appliedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  static Future<void> updateApplicationStatus(String postId, String workerUid, String newStatus) async {
+    // 1. Update sub-collection
+    await _firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('applications')
+        .doc(workerUid)
+        .update({
+      'status': newStatus,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    // 2. Update top-level collection (Sync)
+    try {
+      final appsQuery = await _firestore
+          .collection('applications')
+          .where('jobId', isEqualTo: postId)
+          .where('workerId', isEqualTo: workerUid)
+          .limit(1)
+          .get();
+
+      if (appsQuery.docs.isNotEmpty) {
+        await appsQuery.docs.first.reference.update({
+          'status': newStatus,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      debugPrint("Error syncing application status: $e");
+    }
+  }
+
+  static Stream<List<Map<String, dynamic>>> getApplicants(String postId) {
+    return _firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('applications')
+        .orderBy('appliedAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) => doc.data()).toList());
+  }
+
+  static Stream<bool> hasUserApplied(String postId, String workerUid) {
+    if (workerUid.isEmpty) return Stream.value(false);
+    return _firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('applications')
+        .doc(workerUid)
+        .snapshots()
+        .map((doc) => doc.exists);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   // ⚡ FEATURED POSTS
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Deducts 50 credits from the employer and marks the post as featured for 7 days.
   static Future<void> featurePost(String postId, String employerUid) async {
-    const int featureCost = 50;
-    final credRef = _firestore.collection('contactCredits').doc(employerUid);
+    const int featureCost = 80;
+    final userRef = _firestore.collection('users').doc(employerUid);
     final postRef = _firestore.collection('posts').doc(postId);
+    final txRef = _firestore.collection('contactCredits').doc(employerUid).collection('transactions').doc();
 
     await _firestore.runTransaction((transaction) async {
-      final credSnap = await transaction.get(credRef);
-      if (!credSnap.exists) throw Exception('Credit document not found.');
+      final userSnap = await transaction.get(userRef);
+      if (!userSnap.exists) throw Exception('User not found.');
 
       final balance =
-          int.tryParse(credSnap.data()!['balance']?.toString() ?? '0') ?? 0;
+          int.tryParse(userSnap.data()!['credits']?.toString() ?? '0') ?? 0;
       if (balance < featureCost) {
         throw Exception(
             'Insufficient credits. You need $featureCost credits to boost a post.');
       }
 
-      final featuredUntil = DateTime.now().add(const Duration(days: 7));
-      transaction
-          .update(credRef, {'balance': FieldValue.increment(-featureCost)});
+      final featuredUntil = DateTime.now().add(const Duration(days: 1));
+      transaction.update(userRef, {'credits': FieldValue.increment(-featureCost)});
       transaction.update(postRef, {
         'isFeatured': true,
         'featuredUntil': Timestamp.fromDate(featuredUntil),
+      });
+
+      // Log transaction
+      transaction.set(txRef, {
+        'title': 'Job Boost',
+        'description': 'Featured job post for 1 day',
+        'amount': -featureCost,
+        'type': 'debit',
+        'createdAt': FieldValue.serverTimestamp(),
       });
     });
   }
@@ -290,5 +598,61 @@ class PostService {
     await _firestore.collection('users').doc(currentUid).update({
       'hiddenPosts': FieldValue.arrayUnion([postId])
     });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // ⭐ REVIEWS & RATINGS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  static Future<void> addReview({
+    required String jobId,
+    required String reviewerId,
+    required String revieweeId,
+    required double rating,
+    required String comment,
+    required String reviewerName,
+    String? reviewerPhoto,
+  }) async {
+    await _firestore.collection('reviews').add({
+      'jobId': jobId,
+      'reviewerId': reviewerId,
+      'revieweeId': revieweeId,
+      'rating': rating,
+      'comment': comment,
+      'reviewerName': reviewerName,
+      'reviewerPhoto': reviewerPhoto,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    // Optionally update reviewee's average rating here
+  }
+
+  static Stream<List<Map<String, dynamic>>> getReviewsForUser(String userId) {
+    return _firestore
+        .collection('reviews')
+        .where('revieweeId', isEqualTo: userId)
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList()..sort((a, b) {
+              final aTime = (a['createdAt'] as Timestamp?)?.toDate() ?? DateTime(0);
+              final bTime = (b['createdAt'] as Timestamp?)?.toDate() ?? DateTime(0);
+              return bTime.compareTo(aTime);
+            }));
+  }
+
+  static Stream<List<Map<String, dynamic>>> getReviewsForJob(String jobId) {
+    return _firestore
+        .collection('reviews')
+        .where('jobId', isEqualTo: jobId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) {
+              final data = doc.data();
+              data['id'] = doc.id;
+              return data;
+            }).toList());
   }
 }

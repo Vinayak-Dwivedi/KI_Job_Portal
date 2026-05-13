@@ -1,17 +1,75 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/auth_provider.dart';
+import '../../core/services/privacy_api_service.dart';
 
-class PrivacySettingsScreen extends StatefulWidget {
+class PrivacySettingsScreen extends ConsumerStatefulWidget {
   const PrivacySettingsScreen({super.key});
 
   @override
-  State<PrivacySettingsScreen> createState() => _PrivacySettingsScreenState();
+  ConsumerState<PrivacySettingsScreen> createState() => _PrivacySettingsScreenState();
 }
 
-class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
+class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
   bool _publicProfile = true;
   bool _showPhone = false;
   bool _showEmail = true;
   bool _showLocation = true;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrivacySettings();
+  }
+
+  Future<void> _loadPrivacySettings() async {
+    final user = ref.read(authProvider);
+    if (user == null) return;
+
+    try {
+      final settings = await PrivacyApiService.getPrivacySettings(user.uid);
+      if (mounted) {
+        setState(() {
+          _publicProfile = settings['publicProfile'] ?? true;
+          _showLocation = settings['showLocation'] ?? true;
+          _showPhone = settings['showPhoneNumber'] ?? false;
+          _showEmail = settings['showEmail'] ?? true;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading privacy settings: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _toggleSetting(String field, bool newValue) async {
+    final user = ref.read(authProvider);
+    if (user == null) return;
+
+    // Optimistic UI Update
+    setState(() {
+      if (field == 'publicProfile') _publicProfile = newValue;
+      if (field == 'showLocation') _showLocation = newValue;
+      if (field == 'showPhoneNumber') _showPhone = newValue;
+      if (field == 'showEmail') _showEmail = newValue;
+    });
+
+    try {
+      await PrivacyApiService.updatePrivacySettings(
+        userId: user.uid,
+        publicProfile: _publicProfile,
+        showLocation: _showLocation,
+        showPhoneNumber: _showPhone,
+        showEmail: _showEmail,
+      );
+    } catch (e) {
+      debugPrint('Error updating setting: $e');
+      // Revert if failed
+      _loadPrivacySettings();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,52 +87,54 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionHeader('Profile Visibility', theme),
-            const SizedBox(height: 12),
-            _buildCard([
-              _buildSwitchTile(
-                icon: Icons.public_rounded,
-                title: 'Public Profile',
-                subtitle: 'Allow others to find your profile',
-                value: _publicProfile,
-                onChanged: (val) => setState(() => _publicProfile = val),
-                theme: theme,
-              ),
-              _buildSwitchTile(
-                icon: Icons.location_on_outlined,
-                title: 'Show Location',
-                subtitle: 'Visible to potential employers/workers',
-                value: _showLocation,
-                onChanged: (val) => setState(() => _showLocation = val),
-                theme: theme,
-              ),
-            ], theme),
-            const SizedBox(height: 24),
-            _buildSectionHeader('Contact Information', theme),
-            const SizedBox(height: 12),
-            _buildCard([
-              _buildSwitchTile(
-                icon: Icons.phone_outlined,
-                title: 'Show Phone Number',
-                subtitle: 'Only verified contacts can see',
-                value: _showPhone,
-                onChanged: (val) => setState(() => _showPhone = val),
-                theme: theme,
-              ),
-              _buildSwitchTile(
-                icon: Icons.email_outlined,
-                title: 'Show Email Address',
-                subtitle: 'Visible on your public profile',
-                value: _showEmail,
-                onChanged: (val) => setState(() => _showEmail = val),
-                theme: theme,
-              ),
-            ], theme),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionHeader('Profile Visibility', theme),
+                  const SizedBox(height: 12),
+                  _buildCard([
+                    _buildSwitchTile(
+                      icon: Icons.public_rounded,
+                      title: 'Public Profile',
+                      subtitle: 'Allow others to find your profile',
+                      value: _publicProfile,
+                      onChanged: (val) => _toggleSetting('publicProfile', val),
+                      theme: theme,
+                    ),
+                    _buildSwitchTile(
+                      icon: Icons.location_on_outlined,
+                      title: 'Show Location',
+                      subtitle: 'Visible to potential employers/workers',
+                      value: _showLocation,
+                      onChanged: (val) => _toggleSetting('showLocation', val),
+                      theme: theme,
+                    ),
+                  ], theme),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader('Contact Information', theme),
+                  const SizedBox(height: 12),
+                  _buildCard([
+                    _buildSwitchTile(
+                      icon: Icons.phone_outlined,
+                      title: 'Show Phone Number',
+                      subtitle: 'Only verified contacts can see',
+                      value: _showPhone,
+                      onChanged: (val) => _toggleSetting('showPhoneNumber', val),
+                      theme: theme,
+                    ),
+                    _buildSwitchTile(
+                      icon: Icons.email_outlined,
+                      title: 'Show Email Address',
+                      subtitle: 'Visible on your public profile',
+                      value: _showEmail,
+                      onChanged: (val) => _toggleSetting('showEmail', val),
+                      theme: theme,
+                    ),
+                  ], theme),
             const SizedBox(height: 40),
             Container(
               padding: const EdgeInsets.all(16),

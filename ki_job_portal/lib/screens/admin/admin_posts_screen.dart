@@ -29,14 +29,37 @@ class AdminPostsScreen extends ConsumerWidget {
             itemCount: posts.length,
             itemBuilder: (context, index) {
               final post = posts[index];
+              final isEdit = post['hasPendingEdit'] == true;
+              
+              // Prepare display post
+              Map<String, dynamic> displayPost = Map<String, dynamic>.from(post);
+              if (isEdit && post['pendingEdit'] != null) {
+                final pendingEditData = Map<String, dynamic>.from(post['pendingEdit']);
+                displayPost.addAll(pendingEditData);
+                displayPost['status'] = 'pending_edit'; // Visual cue for admin
+              }
+
               return Card(
                 clipBehavior: Clip.antiAlias,
                 margin: const EdgeInsets.only(bottom: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 child: Column(
                   children: [
+                    if (isEdit)
+                      Container(
+                        width: double.infinity,
+                        color: Colors.blue.withOpacity(0.1),
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.edit_note, color: Colors.blue, size: 16),
+                            SizedBox(width: 8),
+                            Text('EDIT PENDING APPROVAL', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 12)),
+                          ],
+                        ),
+                      ),
                     IgnorePointer( // Disable interactions inside the post card
-                      child: PostCard(post: post),
+                      child: PostCard(post: displayPost),
                     ),
                     Container(
                       color: const Color(0xFFF8FAFC),
@@ -46,14 +69,22 @@ class AdminPostsScreen extends ConsumerWidget {
                         children: [
                           TextButton.icon(
                             onPressed: () {
-                              AdminService.updatePostStatus(post['id'], 'rejected');
+                              if (isEdit) {
+                                AdminService.rejectEdit(post['id']);
+                              } else {
+                                AdminService.updatePostStatus(post['id'], 'rejected');
+                              }
                             },
                             icon: const Icon(Icons.close, color: Colors.red),
                             label: const Text('Reject', style: TextStyle(color: Colors.red)),
                           ),
                           ElevatedButton.icon(
                             onPressed: () {
-                              AdminService.updatePostStatus(post['id'], 'approved');
+                              if (isEdit) {
+                                AdminService.approveEdit(post['id']);
+                              } else {
+                                AdminService.updatePostStatus(post['id'], 'approved');
+                              }
                             },
                             icon: const Icon(Icons.check, color: Colors.white, size: 18),
                             label: const Text('Approve', style: TextStyle(color: Colors.white)),

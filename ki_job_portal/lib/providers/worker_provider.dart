@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/worker_model.dart';
+import '../core/services/firestore_service.dart';
 
 class WorkerNotifier extends Notifier<WorkerModel?> {
   @override
@@ -71,6 +72,21 @@ class WorkerNotifier extends Notifier<WorkerModel?> {
       print("❌ Error loading worker profile: $e");
     }
   }
+
+  Future<void> boostProfile(int days) async {
+    if (state == null) return;
+    await FirestoreService.boostProfile(state!.uid, days);
+    await loadProfile(state!.uid);
+  }
 }
 
 final workerProvider = NotifierProvider<WorkerNotifier, WorkerModel?>(() => WorkerNotifier());
+
+final featuredWorkersProvider = StreamProvider<List<WorkerModel>>((ref) {
+  return FirebaseFirestore.instance
+      .collection('users')
+      .where('role', isEqualTo: 'worker')
+      .where('isFeatured', isEqualTo: true)
+      .snapshots()
+      .map((snapshot) => snapshot.docs.map((doc) => WorkerModel.fromMap(doc.data(), doc.id)).toList());
+});

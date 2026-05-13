@@ -8,6 +8,7 @@ import '../../providers/worker_provider.dart';
 import '../../providers/employer_provider.dart';
 import '../../screens/splash_landing_screen.dart';
 import '../../screens/user_type_selection.dart';
+import '../../core/services/subscription_service.dart';
 import '../../screens/auth/otp_verification_screen.dart';
 import '../../screens/auth/verification_success_screen.dart';
 import '../../screens/auth/worker_signup.dart';
@@ -28,6 +29,7 @@ import '../../screens/worker/job_detail_screen.dart';
 import '../../screens/feed/feed_screen.dart';
 import '../../screens/feed/create_post_screen.dart';
 import '../../screens/feed/post_detail_screen.dart';
+import '../../screens/feed/reels_screen.dart';
 import '../../screens/common/public_profile_screen.dart';
 import '../../screens/subscription/subscription_plans_screen.dart';
 import '../../screens/subscription/subscription_checkout_screen.dart';
@@ -36,6 +38,8 @@ import '../../screens/admin/admin_login_screen.dart';
 import '../../screens/admin/admin_dashboard_screen.dart';
 import '../../screens/admin/admin_posts_screen.dart';
 import '../../screens/admin/admin_users_screen.dart';
+import '../../screens/admin/admin_promotions_screen.dart';
+import '../../screens/admin/admin_plans_screen.dart';
 import '../../screens/banned_screen.dart';
 import '../../widgets/common/page_transitions.dart';
 import '../../screens/settings/settings_screen.dart';
@@ -47,8 +51,15 @@ import '../../screens/settings/role_preferences_screen.dart';
 import '../../screens/settings/support_screen.dart';
 import '../../screens/settings/blocked_users_screen.dart';
 import '../../screens/common/announcements_screen.dart';
+import '../../screens/common/notifications_screen.dart';
 import '../../screens/worker/earnings_screen.dart';
+import '../../screens/employer/applicant_management_screen.dart';
+import '../../screens/common/profile_visitors_screen.dart';
+import '../../screens/common/credit_history_screen.dart';
+import '../../screens/common/referral_screen.dart';
 
+import '../../screens/chat/chat_list_screen.dart';
+import '../../screens/chat/chat_room_screen.dart';
 import '../../widgets/common/ki_bottom_nav_bar.dart';
 
 // Shell scaffold for Worker — holds bottom nav bar
@@ -69,6 +80,7 @@ class _WorkerShellState extends ConsumerState<WorkerShell> {
       final auth = ref.read(authProvider);
       if (auth != null) {
         ref.read(workerProvider.notifier).loadProfile(auth.uid);
+        SubscriptionService.checkAndDeactivateIfExpired(auth.uid);
       }
     });
   }
@@ -101,6 +113,7 @@ class _EmployerShellState extends ConsumerState<EmployerShell> {
       final auth = ref.read(authProvider);
       if (auth != null) {
         ref.read(employerProvider.notifier).loadProfile(auth.uid);
+        SubscriptionService.checkAndDeactivateIfExpired(auth.uid);
       }
     });
   }
@@ -116,9 +129,12 @@ class _EmployerShellState extends ConsumerState<EmployerShell> {
 }
 
 // Router provider
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authProvider);
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     redirect: (context, state) {
       final isLoggedIn = auth != null;
@@ -157,10 +173,12 @@ final routerProvider = Provider<GoRouter>((ref) {
               skill: extra['skill'] ?? '',
               experience: extra['experience'] ?? '',
               location: extra['location'] ?? '',
+              subLocation: extra['subLocation'] ?? '',
               latitude: extra['latitude']?.toString() ?? '0',
               longitude: extra['longitude']?.toString() ?? '0',
               bio: extra['bio']?.toString() ?? '',
               businessType: extra['businessType']?.toString() ?? '',
+              profilePhotoPath: extra['profilePhotoPath'],
             ),
           );
         },
@@ -187,7 +205,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/worker/dashboard', builder: (_, __) => const WorkerHomeFeed()),
           GoRoute(path: '/worker/jobs', builder: (_, __) => const WorkerJobsScreen()),
-          GoRoute(path: '/worker/subscriptions', builder: (_, __) => const WorkerSubscriptionScreen()),
+          GoRoute(
+            path: '/worker/subscriptions',
+            builder: (context, state) {
+              final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '0') ?? 0;
+              return WorkerSubscriptionScreen(initialTab: tab);
+            },
+          ),
           GoRoute(path: '/worker/profile', builder: (_, __) => const WorkerProfileScreen()),
         ],
       ),
@@ -217,6 +241,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           return slideRightPage(state, JobDetailScreen(jobId: id));
         },
       ),
+      GoRoute(
+        path: '/job/:id/applicants',
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return slideRightPage(state, ApplicantManagementScreen(jobId: id));
+        },
+      ),
       
       // Compatibility Redirect
       GoRoute(
@@ -237,13 +268,51 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/employer/create-job', builder: (_, __) => const CreateJobScreen()),
 
       // Feed routes
-      GoRoute(path: '/feed', builder: (_, __) => const FeedScreen()),
-      GoRoute(path: '/feed/create', builder: (_, __) => const CreatePostScreen()),
+      GoRoute(
+        path: '/feed', 
+        builder: (context, state) {
+          final postId = state.uri.queryParameters['postId'];
+          return FeedScreen(targetPostId: postId);
+        },
+      ),
+      GoRoute(
+        path: '/feed/create', 
+        builder: (context, state) {
+          final post = state.extra as Map<String, dynamic>?;
+          return CreatePostScreen(post: post);
+        },
+      ),
       GoRoute(
         path: '/feed/post/:id',
         pageBuilder: (context, state) {
           final id = state.pathParameters['id']!;
           return slideRightPage(state, PostDetailScreen(postId: id));
+        },
+      ),
+      GoRoute(
+        path: '/reels',
+        pageBuilder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return slideRightPage(state, ReelsScreen(initialPostId: extra['postId']));
+        },
+      ),
+
+      // Chat routes
+      GoRoute(path: '/chat', redirect: (_, __) => '/chats'),
+      GoRoute(path: '/chats', builder: (_, __) => const ChatListScreen()),
+      GoRoute(
+        path: '/chat/:id',
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id']!;
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return slideRightPage(
+            state,
+            ChatRoomScreen(
+              chatId: id,
+              otherUserName: extra['name'] ?? 'User',
+              otherUserPhoto: extra['photo'],
+            ),
+          );
         },
       ),
 
@@ -255,8 +324,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>? ?? {};
           return SubscriptionCheckoutScreen(
-            tier: extra['tier'] ?? 'pro',
-            priceStr: extra['priceStr'] ?? '₹299',
+            plan: extra['plan'],
           );
         },
       ),
@@ -267,6 +335,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/admin/dashboard', builder: (_, __) => const AdminDashboardScreen()),
       GoRoute(path: '/admin/posts', builder: (_, __) => const AdminPostsScreen()),
       GoRoute(path: '/admin/users', builder: (_, __) => const AdminUsersScreen()),
+      GoRoute(path: '/admin/promotions', builder: (_, __) => const AdminPromotionsScreen()),
+      GoRoute(path: '/admin/plans', builder: (_, __) => const AdminPlansScreen()),
 
       // Banned Screen
       GoRoute(path: '/banned', builder: (_, __) => const BannedScreen()),
@@ -285,7 +355,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/settings/support', pageBuilder: (context, state) => slideRightPage(state, const SupportScreen())),
       GoRoute(path: '/settings/blocked', pageBuilder: (context, state) => slideRightPage(state, const BlockedUsersScreen())),
       GoRoute(path: '/announcements', pageBuilder: (context, state) => slideRightPage(state, const AnnouncementsScreen())),
+      GoRoute(path: '/notifications', pageBuilder: (context, state) => slideRightPage(state, const NotificationsScreen())),
       GoRoute(path: '/worker/earnings', pageBuilder: (context, state) => slideRightPage(state, const EarningsScreen())),
+      GoRoute(path: '/profile/visitors', pageBuilder: (context, state) => slideRightPage(state, const ProfileVisitorsScreen())),
+      GoRoute(path: '/profile/credits', pageBuilder: (context, state) => slideRightPage(state, const CreditHistoryScreen())),
+      GoRoute(
+        path: '/buy-credits',
+        pageBuilder: (context, state) => slideRightPage(
+          state,
+          const WorkerSubscriptionScreen(initialTab: 1),
+        ),
+      ),
+      GoRoute(path: '/referral', pageBuilder: (context, state) => slideRightPage(state, const ReferralScreen())),
     ],
   );
 });

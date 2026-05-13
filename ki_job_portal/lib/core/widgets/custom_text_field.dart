@@ -47,7 +47,7 @@ class CustomTextField extends StatelessWidget {
               color: theme.colorScheme.outline,
             ),
             filled: true,
-            fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
             prefixIcon: prefixIcon,
             suffixIcon: suffixIcon,
             border: OutlineInputBorder(

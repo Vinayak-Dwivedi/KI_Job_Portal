@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-
+import '../../core/services/location_service.dart';
+import '../../widgets/common/location_picker_sheet.dart';
 import '../../core/theme/app_colors.dart';
 
 class PrimaryButton extends StatelessWidget {
@@ -54,13 +55,53 @@ class _WorkerSignupScreenState extends ConsumerState<WorkerSignupScreen> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _bioController = TextEditingController();
+  final _subLocationController = TextEditingController();
+  final _referralCodeController = TextEditingController();
   List<String> _skills = [];
   bool _isLoading = true;
+  bool _isAutoDetected = false;
 
   @override
   void initState() {
     super.initState();
     fetchSkills();
+    _autoDetectLocation();
+  }
+
+  Future<void> _autoDetectLocation() async {
+    setState(() => _isDetectingLocation = true);
+    try {
+      final position = await LocationService.getCurrentLocation();
+      if (position != null) {
+        final locationData = await LocationService.getLocationFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+
+        if (locationData != null && mounted) {
+          setState(() {
+            _locationLabel = locationData['fullLocation'] ?? locationData['city'];
+            _subLocationController.text = locationData['subLocation'];
+            _latitude = locationData['latitude'];
+            _longitude = locationData['longitude'];
+            _isAutoDetected = true;
+          });
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Enable location for auto-fill.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Error auto-detecting location: $e");
+    } finally {
+      if (mounted) setState(() => _isDetectingLocation = false);
+    }
   }
 
   Future<void> fetchSkills() async {
@@ -82,7 +123,11 @@ class _WorkerSignupScreenState extends ConsumerState<WorkerSignupScreen> {
 
   String _selectedSkill = '';
   int _experience = 0;
-  String _locationLabel = 'Andheri East, Mumbai';
+  String _locationLabel = 'Detecting...';
+  double? _latitude;
+  double? _longitude;
+  bool _isDetectingLocation = false;
+  DateTime? _dateOfBirth;
   XFile? _profilePhoto;
 
   Future<void> _pickImage() async {
@@ -100,6 +145,10 @@ class _WorkerSignupScreenState extends ConsumerState<WorkerSignupScreen> {
   }
 
   void _submitForm() {
+    if (_dateOfBirth == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select your Date of Birth')));
+      return;
+    }
     if (_formKey.currentState!.validate()) {
       context.push('/otp', extra: {
         'phone': _phoneController.text.trim(),
@@ -110,7 +159,12 @@ class _WorkerSignupScreenState extends ConsumerState<WorkerSignupScreen> {
         'email': _emailController.text.trim(),
         'bio': _bioController.text.trim(),
         'location': _locationLabel,
+        'subLocation': _subLocationController.text.trim(),
+        'latitude': _latitude?.toString(),
+        'longitude': _longitude?.toString(),
+        'dateOfBirth': _dateOfBirth!.toIso8601String(),
         'profilePhotoPath': _profilePhoto?.path,
+        'referralCode': _referralCodeController.text.trim(),
       });
     }
   }
@@ -121,6 +175,8 @@ class _WorkerSignupScreenState extends ConsumerState<WorkerSignupScreen> {
     _phoneController.dispose();
     _emailController.dispose();
     _bioController.dispose();
+    _subLocationController.dispose();
+    _referralCodeController.dispose();
     super.dispose();
   }
 
@@ -313,6 +369,51 @@ class _WorkerSignupScreenState extends ConsumerState<WorkerSignupScreen> {
               ),
               const SizedBox(height: 16),
 
+              const Text("Date of Birth", style: TextStyle(color: Colors.grey, fontSize: 13)),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
+                    firstDate: DateTime(1900),
+                    lastDate: DateTime.now(),
+                    builder: (context, child) {
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: Theme.of(context).colorScheme.copyWith(
+                            primary: AppColors.primary,
+                          ),
+                        ),
+                        child: child!,
+                      );
+                    },
+                  );
+                  if (picked != null) {
+                    setState(() => _dateOfBirth = picked);
+                  }
+                },
+                child: Container(
+                  height: 54,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _dateOfBirth == null 
+                      ? "Select your Date of Birth" 
+                      : "${_dateOfBirth!.day}/${_dateOfBirth!.month}/${_dateOfBirth!.year}",
+                    style: TextStyle(
+                      color: _dateOfBirth == null ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.onSurface,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
               _textField(
                 label: "Biography / Professional Bio",
                 hint: "Tell us about your expertise, experience,\nand what you are looking for...",
@@ -426,8 +527,57 @@ class _WorkerSignupScreenState extends ConsumerState<WorkerSignupScreen> {
               const SizedBox(height: 8),
               _MapCard(
                 label: _locationLabel,
+                isDetecting: _isDetectingLocation,
                 onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => LocationPickerSheet(
+                      onLocationSelected: (loc) {
+                        setState(() {
+                          _locationLabel = loc['city'] ?? loc['description'];
+                          _subLocationController.text = loc['subLocation'] ?? '';
+                          _latitude = loc['lat'];
+                          _longitude = loc['lon'];
+                          _isAutoDetected = false;
+                        });
+                      },
+                    ),
+                  );
                 },
+              ),
+              const SizedBox(height: 16),
+              _textField(
+                label: "Sub-Location / Area / Landmark",
+                hint: "e.g. Near HDFC Bank, Sector 15",
+                controller: _subLocationController,
+                validator: (v) => (v == null || v.isEmpty) ? "Sub-location is required" : null,
+              ),
+              if (_isAutoDetected)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4.0, left: 4.0),
+                  child: Row(
+                    children: [
+                      Icon(Icons.location_on, size: 12, color: Colors.green.shade600),
+                      const SizedBox(width: 4),
+                      Text(
+                        "📍 Auto-detected",
+                        style: TextStyle(
+                          color: Colors.green.shade600,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 20),
+              _textField(
+                label: "Referral Code (Optional)",
+                hint: "Enter code to earn rewards",
+                controller: _referralCodeController,
+                prefixWidget: const Icon(Icons.confirmation_num_outlined, size: 20),
               ),
               const SizedBox(height: 30),
 
@@ -601,9 +751,10 @@ class _StepperButton extends StatelessWidget {
 
 class _MapCard extends StatelessWidget {
   final String label;
+  final bool isDetecting;
   final VoidCallback onTap;
 
-  const _MapCard({required this.label, required this.onTap});
+  const _MapCard({required this.label, required this.onTap, this.isDetecting = false});
 
   @override
   Widget build(BuildContext context) {
@@ -643,8 +794,12 @@ class _MapCard extends StatelessWidget {
                   color: Theme.of(context).colorScheme.primary,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.my_location,
-                    color: Colors.white, size: 18),
+                child: isDetecting 
+                  ? const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Icon(Icons.my_location, color: Colors.white, size: 18),
               ),
             ),
             Positioned(

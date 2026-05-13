@@ -4,6 +4,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../../core/services/location_service.dart';
+import '../../widgets/common/location_picker_sheet.dart';
 
 class EmployerSignupScreen extends StatefulWidget {
   const EmployerSignupScreen({super.key});
@@ -18,10 +20,57 @@ class _EmployerSignupScreenState extends State<EmployerSignupScreen> {
   final _companyController = TextEditingController();
   final _phoneController = TextEditingController();
   final _bioController = TextEditingController();
+  final _subLocationController = TextEditingController();
+  final _officeAddressController = TextEditingController();
+  final _referralCodeController = TextEditingController();
 
   String _selectedHirerType = 'Company / Organization';
   LatLng? _selectedLocation;
+  bool _isDetectingLocation = false;
+  bool _isAutoDetected = false;
+  DateTime? _dateOfBirth;
   XFile? _profilePhoto;
+
+  @override
+  void initState() {
+    super.initState();
+    _autoDetectLocation();
+  }
+
+  Future<void> _autoDetectLocation() async {
+    setState(() => _isDetectingLocation = true);
+    try {
+      final position = await LocationService.getCurrentLocation();
+      if (position != null) {
+        final locationData = await LocationService.getLocationFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
+
+        if (locationData != null && mounted) {
+          setState(() {
+            _selectedLocation = LatLng(position.latitude, position.longitude);
+            _officeAddressController.text = locationData['fullLocation'] ?? locationData['city'];
+            _subLocationController.text = locationData['subLocation'];
+            _isAutoDetected = true;
+          });
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Enable location for auto-fill.'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Error auto-detecting location: $e");
+    } finally {
+      if (mounted) setState(() => _isDetectingLocation = false);
+    }
+  }
 
   Future<void> _pickImage() async {
     try {
@@ -38,6 +87,10 @@ class _EmployerSignupScreenState extends State<EmployerSignupScreen> {
   }
 
   void _submitForm() {
+    if (_dateOfBirth == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select your Date of Birth')));
+      return;
+    }
     if (_formKey.currentState!.validate()) {
       context.push('/otp', extra: {
         'phone': _phoneController.text.trim(),
@@ -49,7 +102,11 @@ class _EmployerSignupScreenState extends State<EmployerSignupScreen> {
         'experience': '',
         'latitude': _selectedLocation?.latitude.toString() ?? '',
         'longitude': _selectedLocation?.longitude.toString() ?? '',
+        'location': _officeAddressController.text.trim(),
+        'subLocation': _subLocationController.text.trim(),
+        'dateOfBirth': _dateOfBirth!.toIso8601String(),
         'profilePhotoPath': _profilePhoto?.path,
+        'referralCode': _referralCodeController.text.trim(),
       });
     }
   }
@@ -60,6 +117,9 @@ class _EmployerSignupScreenState extends State<EmployerSignupScreen> {
     _companyController.dispose();
     _phoneController.dispose();
     _bioController.dispose();
+    _subLocationController.dispose();
+    _officeAddressController.dispose();
+    _referralCodeController.dispose();
     super.dispose();
   }
 
@@ -270,6 +330,51 @@ class _EmployerSignupScreenState extends State<EmployerSignupScreen> {
               ),
               const SizedBox(height: 20),
 
+              const Text("DATE OF BIRTH", style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
+                    firstDate: DateTime(1900),
+                    lastDate: DateTime.now(),
+                    builder: (context, child) {
+                      return Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: Theme.of(context).colorScheme.copyWith(
+                            primary: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        child: child!,
+                      );
+                    },
+                  );
+                  if (picked != null) {
+                    setState(() => _dateOfBirth = picked);
+                  }
+                },
+                child: Container(
+                  height: 54,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _dateOfBirth == null 
+                      ? "Select your Date of Birth" 
+                      : "${_dateOfBirth!.day}/${_dateOfBirth!.month}/${_dateOfBirth!.year}",
+                    style: TextStyle(
+                      color: _dateOfBirth == null ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.onSurface,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
               _textField(
                 label: "COMPANY DESCRIPTION / BIO",
                 hint: "Describe your business, values, and what\nyou look for in partners...",
@@ -332,73 +437,78 @@ class _EmployerSignupScreenState extends State<EmployerSignupScreen> {
               const SizedBox(height: 8),
 
               // Interactive Map
-              Container(
-                height: 160,
-                width: double.infinity,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: theme.cardColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: theme.colorScheme.onSurface.withOpacity(0.05)),
-                ),
-                child: FlutterMap(
-                  options: MapOptions(
-                    initialCenter: const LatLng(19.0760, 72.8777), // Default initialization point
-                    initialZoom: 11.0,
-                    onTap: (tapPosition, point) {
-                      setState(() {
-                        _selectedLocation = point;
-                      });
-                    },
-                    interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.drag | InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
+              _MapCard(
+                label: _officeAddressController.text.isEmpty 
+                    ? (_isDetectingLocation ? 'Detecting...' : 'Select Location')
+                    : _officeAddressController.text,
+                isDetecting: _isDetectingLocation,
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => LocationPickerSheet(
+                      onLocationSelected: (loc) {
+                        setState(() {
+                          _officeAddressController.text = loc['city'] ?? loc['description'];
+                          _subLocationController.text = loc['subLocation'] ?? '';
+                          if (loc['lat'] != null && loc['lon'] != null) {
+                            _selectedLocation = LatLng(loc['lat'], loc['lon']);
+                          }
+                          _isAutoDetected = false;
+                        });
+                      },
                     ),
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.example.kijobportal',
-                    ),
-                    if (_selectedLocation != null)
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            point: _selectedLocation!,
-                            width: 80,
-                            height: 80,
-                            child: const Icon(Icons.location_on, color: Colors.redAccent, size: 40),
-                          ),
-                        ],
-                      )
-                    else
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            point: const LatLng(19.0760, 72.8777),
-                            width: 120,
-                            height: 40,
-                            child: Container(
-                              alignment: Alignment.center,
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primary.withOpacity(0.9),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Text('Tap map to pin location', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
+                  );
+                },
               ),
               const SizedBox(height: 12),
-              const Center(
-                child: Text(
-                  "Tap the map to pin your exact operational\nheadquarters",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey, fontSize: 11, height: 1.4),
+               _textField(
+                label: "OFFICE CITY / LOCATION",
+                hint: "e.g. New Delhi",
+                controller: _officeAddressController,
+                validator: (v) => (v == null || v.isEmpty) ? "City is required" : null,
+                suffixIcon: _isDetectingLocation 
+                  ? const Padding(
+                      padding: EdgeInsets.all(12.0),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.my_location, size: 20),
+                      onPressed: _autoDetectLocation,
+                    ),
+              ),
+              const SizedBox(height: 20),
+              _textField(
+                label: "SUB-LOCATION / AREA / LANDMARK",
+                hint: "e.g. Near HDFC Bank, Sector 15",
+                controller: _subLocationController,
+                validator: (v) => (v == null || v.isEmpty) ? "Sub-location is required" : null,
+              ),
+              if (_isAutoDetected)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4.0, left: 4.0),
+                  child: Row(
+                    children: [
+                      Icon(Icons.location_on, size: 12, color: Colors.green.shade600),
+                      const SizedBox(width: 4),
+                      Text(
+                        "📍 Auto-detected",
+                        style: TextStyle(
+                          color: Colors.green.shade600,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+              const SizedBox(height: 20),
+              _textField(
+                label: "REFERRAL CODE (OPTIONAL)",
+                hint: "Enter code to earn rewards",
+                controller: _referralCodeController,
+                prefixWidget: const Icon(Icons.confirmation_num_outlined, size: 20),
               ),
               const SizedBox(height: 48), // Padding before bottom actions
             ],
@@ -503,4 +613,112 @@ class _DashedCirclePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _MapCard extends StatelessWidget {
+  final String label;
+  final bool isDetecting;
+  final VoidCallback onTap;
+
+  const _MapCard({required this.label, required this.onTap, this.isDetecting = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 130,
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            CustomPaint(
+              size: const Size(double.infinity, 130),
+              painter: _MapGridPainter(theme.colorScheme.onSurface.withOpacity(0.03)),
+            ),
+            Positioned(
+              top: 28,
+              left: 90,
+              child: Icon(Icons.location_on, color: theme.colorScheme.onSurface.withOpacity(0.1), size: 22),
+            ),
+            Positioned(
+              top: 55,
+              left: 40,
+              child: Icon(Icons.location_on, color: theme.colorScheme.onSurface.withOpacity(0.05), size: 18),
+            ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: isDetecting 
+                  ? const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Icon(Icons.my_location, color: Colors.white, size: 18),
+              ),
+            ),
+            Positioned(
+              bottom: 12,
+              left: 12,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: theme.scaffoldBackgroundColor.withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: theme.dividerColor, width: 0.5),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.location_on,
+                        color: theme.colorScheme.primary, size: 14),
+                    const SizedBox(width: 5),
+                    Text(label,
+                        style: TextStyle(
+                            color: theme.colorScheme.onSurface,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MapGridPainter extends CustomPainter {
+  final Color gridColor;
+  _MapGridPainter(this.gridColor);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = gridColor
+      ..strokeWidth = 1;
+    const step = 24.0;
+    for (double x = 0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (double y = 0; y < size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_MapGridPainter oldDelegate) => false;
 }

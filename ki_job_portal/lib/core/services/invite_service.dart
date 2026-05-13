@@ -10,6 +10,7 @@ class InviteService {
     required String workerUid,
     required String jobId,
     required String jobTitle,
+    String? message,
   }) async {
     // Avoid duplicate invites for the same job
     final existing = await _db
@@ -30,7 +31,18 @@ class InviteService {
       'workerUid': workerUid,
       'jobId': jobId,
       'jobTitle': jobTitle,
+      'message': message ?? 'Hi, we found your profile suitable for this job. We\'d like to invite you to apply.',
       'status': 'pending', // pending | accepted | declined
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    // 🔔 Send in-app notification to the candidate
+    await _db.collection('users').doc(workerUid).collection('notifications').add({
+      'title': '$employerName invited you!',
+      'body': 'You have a new job invitation for: $jobTitle',
+      'type': 'invite',
+      'jobId': jobId,
+      'isRead': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
@@ -54,6 +66,7 @@ class InviteService {
               'jobId': data['jobId'] ?? '',
               'jobTitle': data['jobTitle'] ?? 'Job',
               'status': data['status'] ?? 'pending',
+              'message': data['message'] ?? '',
               'createdAt': data['createdAt'],
             };
           }).toList();

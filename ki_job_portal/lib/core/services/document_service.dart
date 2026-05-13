@@ -11,6 +11,7 @@ class DocumentService {
     required String uid,
     required String name,
     required String phone,
+    String? category,
     required File file,
   }) async {
     final extension = file.path.split('.').last.toLowerCase();
@@ -37,6 +38,7 @@ class DocumentService {
       name: name,
       url: url,
       type: extension,
+      category: category,
       timestamp: DateTime.now(),
       userId: uid,
       phone: phone,

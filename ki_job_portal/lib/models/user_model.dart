@@ -8,6 +8,7 @@ class UserModel {
   final bool isProfileComplete;
   final DateTime? createdAt;
   final String? fcmToken;
+  final DateTime? dateOfBirth;
 
   UserModel({
     required this.uid,
@@ -17,6 +18,7 @@ class UserModel {
     this.isProfileComplete = false,
     this.createdAt,
     this.fcmToken,
+    this.dateOfBirth,
   });
 
   UserModel copyWith({
@@ -27,6 +29,7 @@ class UserModel {
     bool? isProfileComplete,
     DateTime? createdAt,
     String? fcmToken,
+    DateTime? dateOfBirth,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -36,6 +39,7 @@ class UserModel {
       isProfileComplete: isProfileComplete ?? this.isProfileComplete,
       createdAt: createdAt ?? this.createdAt,
       fcmToken: fcmToken ?? this.fcmToken,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
     );
   }
 
@@ -48,6 +52,7 @@ class UserModel {
       'isProfileComplete': isProfileComplete,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       'fcmToken': fcmToken,
+      if (dateOfBirth != null) 'dateOfBirth': dateOfBirth!.toIso8601String(),
     };
   }
 
@@ -60,6 +65,7 @@ class UserModel {
       isProfileComplete: map['isProfileComplete'] ?? false,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       fcmToken: map['fcmToken'],
+      dateOfBirth: map['dateOfBirth'] != null ? DateTime.tryParse(map['dateOfBirth']) : null,
     );
   }
 }

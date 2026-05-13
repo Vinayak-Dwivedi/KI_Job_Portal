@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_provider.dart';
+import '../core/services/privacy_api_service.dart';
 
 // Fetch public profile data from the unified 'users' collection
 String _normalizePhoto(Map<String, dynamic> data) {
@@ -22,21 +23,32 @@ String _normalizePhoto(Map<String, dynamic> data) {
   return '';
 }
 
-// Fetch public profile data from the unified 'users' collection
+
 final publicProfileProvider =
     FutureProvider.family<Map<String, dynamic>?, String>((ref, uid) async {
       try {
         final cleanUid = uid.trim();
         if (cleanUid.isEmpty) return null;
 
-        // Try direct fetch
-        var doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(cleanUid)
-            .get();
+        final auth = ref.read(authProvider);
+        final viewerUid = auth?.uid ?? cleanUid;
+
+        // Fetch from Privacy REST API
+        final data = await PrivacyApiService.getFilteredProfile(
+          targetUid: cleanUid,
+          viewerUid: viewerUid,
+        );
+
+        data['id'] = cleanUid;
+        data['profilePhotoUrl'] = _normalizePhoto(data);
         
-        // Fallback for admin if UID lookup fails
-        if (!doc.exists && (cleanUid == 'uid_admin' || cleanUid.toLowerCase().contains('admin'))) {
+        return data;
+      } catch (e) {
+        final cleanUid = uid.trim();
+        if (cleanUid.isEmpty) return null;
+
+        // Fallback to mock admin if requested
+        if (cleanUid == 'uid_admin' || cleanUid.toLowerCase().contains('admin')) {
           final adminQuery = await FirebaseFirestore.instance
               .collection('users')
               .where('role', isEqualTo: 'admin')
@@ -50,17 +62,22 @@ final publicProfileProvider =
             return data;
           }
         }
-
-        if (!doc.exists) return null;
-
-        final data = doc.data()!;
-        data['id'] = doc.id;
         
-        // Normalize profile photo field
-        data['profilePhotoUrl'] = _normalizePhoto(data);
+        // Final fallback: Direct Firestore read (limited fields for safety)
+        try {
+          final userDoc = await FirebaseFirestore.instance.collection('users').doc(cleanUid).get();
+          if (userDoc.exists) {
+            final data = userDoc.data()!;
+            data['id'] = userDoc.id;
+            data['profilePhotoUrl'] = _normalizePhoto(data);
+            // Ensure essential fields exist even if null
+            data['name'] = data['name'] ?? data['contactName'] ?? 'Karigar';
+            return data;
+          }
+        } catch (_) {
+          // Silent fail on direct read
+        }
         
-        return data;
-      } catch (e) {
         return null;
       }
     });
@@ -74,7 +91,7 @@ final isContactUnlockedProvider = StreamProvider.family<bool, String>((
   if (auth == null) return Stream.value(false);
 
   return FirebaseFirestore.instance
-      .collection('contactCredits')
+      .collection('users')
       .doc(auth.uid)
       .snapshots()
       .map((doc) {
@@ -91,10 +108,16 @@ final userCreditsProvider = StreamProvider((ref) {
   if (auth == null) return Stream.value(null);
 
   return FirebaseFirestore.instance
-      .collection('contactCredits')
+      .collection('users')
       .doc(auth.uid)
       .snapshots()
-      .map((doc) => doc.data());
+      .map((doc) {
+        if (!doc.exists) return {'balance': 0};
+        final data = doc.data()!;
+        return {
+          'balance': data['credits'] ?? data['balance'] ?? 0,
+        };
+      });
 });
 // Stream to watch real-time updates for any user profile
 final liveProfileProvider = StreamProvider.family<Map<String, dynamic>?, String>((ref, uid) {

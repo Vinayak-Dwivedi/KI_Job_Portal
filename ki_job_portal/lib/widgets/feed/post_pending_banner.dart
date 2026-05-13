@@ -60,7 +60,7 @@ class _PostPendingBannerWidgetState extends State<_PostPendingBannerWidget>
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
+                  color: Colors.black.withOpacity(0.15),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 )
@@ -71,7 +71,7 @@ class _PostPendingBannerWidgetState extends State<_PostPendingBannerWidget>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: Colors.white.withOpacity(0.2),
                       shape: BoxShape.circle),
                   child: const Icon(Icons.schedule, color: Colors.white, size: 24),
                 ),

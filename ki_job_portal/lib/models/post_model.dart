@@ -22,6 +22,16 @@ class PostModel {
   final String? companyName;
   final bool isAvailabilityPost;
   final List<Map<String, dynamic>> media;
+  final String privacy;            // "public" | "connections"
+  final bool isShared;
+  final String? sharedByUserId;
+  final String? sharedByUserName;
+  final String? sharedByUserPhotoUrl;
+  final String? originalPostId;
+  final String? originalPostAuthorId;
+  final String? originalPostAuthorName;
+  final String? shareCaption;
+  final DateTime? originalCreatedAt;
 
   PostModel({
     required this.postId,
@@ -45,6 +55,16 @@ class PostModel {
     this.companyName,
     this.isAvailabilityPost = false,
     this.media = const [],
+    this.privacy = 'public',
+    this.isShared = false,
+    this.sharedByUserId,
+    this.sharedByUserName,
+    this.sharedByUserPhotoUrl,
+    this.originalPostId,
+    this.originalPostAuthorId,
+    this.originalPostAuthorName,
+    this.shareCaption,
+    this.originalCreatedAt,
   });
 
   factory PostModel.fromMap(Map<String, dynamic> data) => PostModel(
@@ -56,8 +76,8 @@ class PostModel {
     isUserVerified: data['isUserVerified'] ?? data['isVerified'] ?? false,
     title: data['title'] ?? '',
     description: data['description'] ?? data['text'] ?? '',
-    imageUrls: _parseMediaUrls(data), // Still populate it for any legacy usages
-    status: data['status'] ?? 'approved', // Defaulting to approved for now if missing
+    imageUrls: _parseMediaUrls(data), 
+    status: data['status'] ?? 'approved', 
     rejectionReason: data['rejectionReason'],
     createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     approvedAt: (data['approvedAt'] as Timestamp?)?.toDate(),
@@ -69,7 +89,53 @@ class PostModel {
     companyName: data['companyName'],
     isAvailabilityPost: data['isAvailabilityPost'] ?? false,
     media: _parseMediaObjects(data),
+    privacy: data['privacy'] ?? 'public',
+    isShared: data['isShared'] ?? false,
+    sharedByUserId: data['sharedByUserId'],
+    sharedByUserName: data['sharedByUserName'],
+    sharedByUserPhotoUrl: data['sharedByUserPhotoUrl'],
+    originalPostId: data['originalPostId'],
+    originalPostAuthorId: data['originalPostAuthorId'],
+    originalPostAuthorName: data['originalPostAuthorName'],
+    shareCaption: data['shareCaption'],
+    originalCreatedAt: (data['originalCreatedAt'] as Timestamp?)?.toDate(),
   );
+
+  Map<String, dynamic> toMap() {
+    return {
+      'postId': postId,
+      'userId': userId,
+      'userRole': userRole,
+      'userName': userName,
+      'userPhotoUrl': userPhotoUrl,
+      'isUserVerified': isUserVerified,
+      'title': title,
+      'description': description,
+      'imageUrls': imageUrls,
+      'status': status,
+      'rejectionReason': rejectionReason,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'approvedAt': approvedAt != null ? Timestamp.fromDate(approvedAt!) : null,
+      'likeCount': likeCount,
+      'isJobPost': isJobPost,
+      'jobTitle': jobTitle,
+      'jobSalary': jobSalary,
+      'location': location,
+      'companyName': companyName,
+      'isAvailabilityPost': isAvailabilityPost,
+      'media': media,
+      'privacy': privacy,
+      'isShared': isShared,
+      'sharedByUserId': sharedByUserId,
+      'sharedByUserName': sharedByUserName,
+      'sharedByUserPhotoUrl': sharedByUserPhotoUrl,
+      'originalPostId': originalPostId,
+      'originalPostAuthorId': originalPostAuthorId,
+      'originalPostAuthorName': originalPostAuthorName,
+      'shareCaption': shareCaption,
+      'originalCreatedAt': originalCreatedAt != null ? Timestamp.fromDate(originalCreatedAt!) : null,
+    };
+  }
 
   static List<String> _parseMediaUrls(Map<String, dynamic> data) {
     if (data['media'] != null) {

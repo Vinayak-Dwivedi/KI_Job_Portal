@@ -9,6 +9,9 @@ import '../../providers/employer_provider.dart';
 import '../../core/services/firestore_service.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import '../../core/services/notification_service.dart';
+import '../../l10n/app_localizations.dart';
+import '../../core/services/referral_service.dart';
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
   final String phone;
@@ -20,9 +23,12 @@ class OtpVerificationScreen extends ConsumerStatefulWidget {
   final String location;
   final String latitude;
   final String longitude;
+  final String subLocation;
   final String bio;
   final String businessType;
+  final String dateOfBirth;
   final String? profilePhotoPath;
+  final String referralCode;
   final bool isLogin;
 
   const OtpVerificationScreen({
@@ -34,11 +40,14 @@ class OtpVerificationScreen extends ConsumerStatefulWidget {
     this.skill = '',
     this.experience = '',
     this.location = '',
+    this.subLocation = '',
     this.latitude = '0',
     this.longitude = '0',
     this.bio = '',
     this.businessType = '',
+    this.dateOfBirth = '',
     this.profilePhotoPath,
+    this.referralCode = '',
     this.isLogin = false,
   });
 
@@ -91,6 +100,10 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
           }
           
           if (!mounted) return;
+          
+          // 🔔 Update FCM Token
+          NotificationService.updateToken(uid: uid);
+
           context.go(actualRole == 'employer' ? '/employer/dashboard' : '/worker/dashboard');
           return;
         }
@@ -100,7 +113,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
           if (!mounted) return;
           setState(() => _isVerifying = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Account not found. Please sign up first.'), backgroundColor: Colors.orange),
+            SnackBar(content: Text(AppLocalizations.of(context)!.accountNotFound), backgroundColor: Colors.orange),
           );
           return;
         }
@@ -129,10 +142,12 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
           'skills': widget.role == 'worker' ? [widget.skill] : [],
           'experience': int.tryParse(widget.experience) ?? 0,
           'location': widget.location,
+          'subLocation': widget.subLocation,
           'latitude': widget.latitude,
           'longitude': widget.longitude,
           'bio': widget.bio,
           'businessType': widget.businessType,
+          'dateOfBirth': widget.dateOfBirth,
           'credits': widget.role == 'employer' ? 50 : 0, // Employers get 50 credits on signup
           'profilePhotoUrl': profilePhotoUrl,
         });
@@ -147,7 +162,19 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
           await ref.read(employerProvider.notifier).loadProfile(uid);
         }
 
+        // 🎁 PROCESS REFERRAL
+        if (widget.referralCode.isNotEmpty) {
+          await ReferralService.processReferralReward(uid, widget.referralCode);
+        }
+
+        // 🎫 SETUP USER'S OWN REFERRAL CODE
+        await ReferralService.setupReferralCode(uid, widget.name);
+
         if (!mounted) return;
+
+        // 🔔 Update FCM Token
+        NotificationService.updateToken();
+
         context.go('/verified');
       } catch (e) {
         debugPrint("❌ Verification error: $e");
@@ -155,8 +182,8 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid OTP'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.invalidOtp),
           backgroundColor: Colors.red,
         ),
       );
@@ -217,7 +244,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
           onPressed: () => context.pop(),
         ),
         title: Text(
-          'Security Check',
+          AppLocalizations.of(context)!.securityCheck,
           style: TextStyle(
             color: theme.colorScheme.onSurface.withOpacity(0.8),
             fontSize: 16,
@@ -235,7 +262,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Verify Your',
+                  AppLocalizations.of(context)!.verifyYour,
                   style: TextStyle(
                     fontSize: 36,
                     fontWeight: FontWeight.w900,
@@ -244,7 +271,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                   ),
                 ).animate().fadeIn(duration: 500.ms).moveY(begin: 10, end: 0),
                 Text(
-                  'Identity',
+                  AppLocalizations.of(context)!.identity,
                   style: TextStyle(
                     fontSize: 36,
                     fontWeight: FontWeight.w900,
@@ -255,7 +282,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                  .shimmer(duration: 2.seconds, delay: 1.seconds),
                 const SizedBox(height: 16),
                 Text(
-                  "We've sent a secure code to your device. Enter the digits below to authenticate.",
+                  AppLocalizations.of(context)!.secureCodeSent,
                   style: TextStyle(
                     fontSize: 15,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -335,7 +362,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'AUTHORIZING...',
+                          AppLocalizations.of(context)!.authorizing,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -365,7 +392,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                       elevation: 8,
                       shadowColor: theme.colorScheme.primary.withOpacity(0.4),
                     ),
-                    child: const Text('Verify Code', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                    child: Text(AppLocalizations.of(context)!.verifyCode, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                   ).animate().fadeIn(delay: 700.ms).moveY(begin: 10, end: 0),
                 ),
                 const SizedBox(height: 24),
@@ -377,7 +404,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Text(
-                        "Didn't receive the code?",
+                        AppLocalizations.of(context)!.didntReceive,
                         style: TextStyle(
                           color: _canResend ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
                           fontSize: 14,
@@ -413,7 +440,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Secure Verification',
+                              AppLocalizations.of(context)!.secureVerification,
                               style: TextStyle(
                                 color: theme.colorScheme.onSurface,
                                 fontWeight: FontWeight.bold,
@@ -422,7 +449,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Protecting your professional data is our top priority. Two-factor authentication keeps your profile safe.',
+                              AppLocalizations.of(context)!.secureVerificationSubtitle,
                               style: TextStyle(
                                 color: theme.colorScheme.onSurfaceVariant,
                                 fontSize: 12,

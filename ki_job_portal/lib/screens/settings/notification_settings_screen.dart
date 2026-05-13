@@ -1,18 +1,116 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:permission_handler/permission_handler.dart';
+import '../../providers/auth_provider.dart';
 
-class NotificationSettingsScreen extends StatefulWidget {
+class NotificationSettingsScreen extends ConsumerStatefulWidget {
   const NotificationSettingsScreen({super.key});
 
   @override
-  State<NotificationSettingsScreen> createState() => _NotificationSettingsScreenState();
+  ConsumerState<NotificationSettingsScreen> createState() => _NotificationSettingsScreenState();
 }
 
-class _NotificationSettingsScreenState extends State<NotificationSettingsScreen> {
+class _NotificationSettingsScreenState extends ConsumerState<NotificationSettingsScreen> {
   bool _pushEnabled = true;
   bool _emailEnabled = true;
   bool _smsEnabled = false;
   bool _jobAlerts = true;
   bool _postInteractions = true;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      debugPrint("❌ [NOTIFS] No user found during load");
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('settings')
+          .doc('notifications')
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data()!;
+        setState(() {
+          _pushEnabled = data['pushEnabled'] ?? true;
+          _emailEnabled = data['emailEnabled'] ?? true;
+          _smsEnabled = data['smsEnabled'] ?? false;
+          _jobAlerts = data['jobAlerts'] ?? true;
+          _postInteractions = data['postInteractions'] ?? true;
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Error loading notification settings: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    // 1. Request system level permission (Android 13+)
+    PermissionStatus status = await Permission.notification.request();
+    
+    if (status.isGranted) {
+      // 2. Request FCM permission
+      await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      debugPrint("✅ [NOTIFS] Permissions granted");
+    } else if (status.isPermanentlyDenied) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Notifications are blocked. Please enable them in settings.'),
+            action: SnackBarAction(
+              label: 'Settings',
+              onPressed: () => openAppSettings(),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateSetting(String key, bool value) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('settings')
+          .doc('notifications')
+          .set({
+        key: value,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Error updating notification setting: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update $key: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +128,9 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,7 +143,13 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 title: 'Push Notifications',
                 subtitle: 'Get instant alerts on your device',
                 value: _pushEnabled,
-                onChanged: (val) => setState(() => _pushEnabled = val),
+                onChanged: (val) async {
+                  if (val) {
+                    await _requestNotificationPermission();
+                  }
+                  setState(() => _pushEnabled = val);
+                  _updateSetting('pushEnabled', val);
+                },
                 theme: theme,
               ),
               _buildSwitchTile(
@@ -51,7 +157,10 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 title: 'Email Notifications',
                 subtitle: 'Periodic updates via email',
                 value: _emailEnabled,
-                onChanged: (val) => setState(() => _emailEnabled = val),
+                onChanged: (val) {
+                  setState(() => _emailEnabled = val);
+                  _updateSetting('emailEnabled', val);
+                },
                 theme: theme,
               ),
               _buildSwitchTile(
@@ -59,7 +168,10 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 title: 'SMS Alerts',
                 subtitle: 'Critical updates via text message',
                 value: _smsEnabled,
-                onChanged: (val) => setState(() => _smsEnabled = val),
+                onChanged: (val) {
+                  setState(() => _smsEnabled = val);
+                  _updateSetting('smsEnabled', val);
+                },
                 theme: theme,
               ),
             ], theme),
@@ -72,7 +184,10 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 title: 'Job Recommendations',
                 subtitle: 'New jobs matching your profile',
                 value: _jobAlerts,
-                onChanged: (val) => setState(() => _jobAlerts = val),
+                onChanged: (val) {
+                  setState(() => _jobAlerts = val);
+                  _updateSetting('jobAlerts', val);
+                },
                 theme: theme,
               ),
               _buildSwitchTile(
@@ -80,7 +195,10 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 title: 'Post Interactions',
                 subtitle: 'Likes and comments on your posts',
                 value: _postInteractions,
-                onChanged: (val) => setState(() => _postInteractions = val),
+                onChanged: (val) {
+                  setState(() => _postInteractions = val);
+                  _updateSetting('postInteractions', val);
+                },
                 theme: theme,
               ),
             ], theme),

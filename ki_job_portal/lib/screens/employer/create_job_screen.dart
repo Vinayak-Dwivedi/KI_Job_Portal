@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/services/category_service.dart';
+import '../../widgets/common/location_picker_sheet.dart';
 
 class CreateJobScreen extends StatefulWidget {
   const CreateJobScreen({super.key});
@@ -20,6 +21,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
   final locationController = TextEditingController();
   final experienceController = TextEditingController();
   final skillsController = TextEditingController();
+  final subLocationController = TextEditingController();
 
   String? _selectedCategory;
   bool isLoading = false;
@@ -42,6 +44,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     locationController.dispose();
     experienceController.dispose();
     skillsController.dispose();
+    subLocationController.dispose();
     super.dispose();
   }
 
@@ -66,6 +69,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
         'duration': durationController.text.trim(),
         'workersNeeded': workersController.text.trim(),
         'location': locationController.text.trim(),
+        'subLocation': subLocationController.text.trim(),
         'experience': experienceController.text.trim(),
         'skills': skillsController.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
@@ -243,9 +247,33 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
 
               TextFormField(
                 controller: locationController,
-                decoration: input("Location"),
+                readOnly: true,
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => LocationPickerSheet(
+                      onLocationSelected: (loc) {
+                        setState(() {
+                          locationController.text = loc['city'] ?? loc['description'];
+                          subLocationController.text = loc['subLocation'] ?? '';
+                        });
+                      },
+                    ),
+                  );
+                },
+                decoration: input("Location").copyWith(
+                  suffixIcon: Icon(Icons.map_rounded, color: theme.colorScheme.primary),
+                ),
                 style: TextStyle(color: theme.colorScheme.onSurface),
                 validator: (v) => v!.isEmpty ? "Required" : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: subLocationController,
+                decoration: input("Sub-Location / Area"),
+                style: TextStyle(color: theme.colorScheme.onSurface),
               ),
               const SizedBox(height: 16),
               TextFormField(
