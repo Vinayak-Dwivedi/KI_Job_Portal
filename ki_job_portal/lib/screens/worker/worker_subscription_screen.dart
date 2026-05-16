@@ -510,7 +510,7 @@ class _PlanCard extends StatelessWidget {
                           const Icon(Icons.bolt, color: AppColors.primary, size: 16),
                           const SizedBox(width: 4),
                           Text(
-                            l10n.creditsCount(plan.credits.toString()),
+                            l10n.creditsCount(plan.credits),
                             style: GoogleFonts.plusJakartaSans(
                               color: theme.colorScheme.onSurfaceVariant,
                               fontSize: 12,
@@ -713,7 +713,7 @@ class _CreditPack extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  l10n.creditsCount(amount), 
+                  l10n.creditsCount(int.parse(amount)), 
                   style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 18, color: theme.colorScheme.onSurface),
                 ),
                 if (bonus.isNotEmpty) 
