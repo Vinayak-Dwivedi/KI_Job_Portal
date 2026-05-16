@@ -645,10 +645,10 @@ class AppLocalizationsHi extends AppLocalizations {
   String get renewPlan => 'योजना नवीनीकृत करें';
 
   @override
-  String get upgradeTo => '⬆ {planName} में अपग्रेड करें';
+  String upgradeTo(String planName) => '⬆ $planName में अपग्रेड करें';
 
   @override
-  String get creditsCount => '{count} क्रेडिट';
+  String creditsCount(int count) => '$count क्रेडिट';
 
   @override
   String get buyBtn => 'खरीदें';
