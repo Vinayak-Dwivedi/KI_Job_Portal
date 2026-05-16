@@ -424,6 +424,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       context: context,
       builder: (context) {
         return StatefulBuilder(builder: (context, setDialogState) {
+          final theme = Theme.of(context);
           final l10n = AppLocalizations.of(context)!;
           return AlertDialog(
             title: Text(l10n.addEventDetails, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: theme.colorScheme.onSurface)),
