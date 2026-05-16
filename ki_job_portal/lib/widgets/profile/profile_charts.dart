@@ -10,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/profile_stats_provider.dart';
 import '../../providers/review_provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import 'reviews_list_sheet.dart';
 
 class ProfileCharts extends ConsumerWidget {
