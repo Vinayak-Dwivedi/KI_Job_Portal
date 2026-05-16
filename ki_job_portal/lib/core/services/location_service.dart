@@ -66,8 +66,8 @@ class LocationService {
           // Extract sub-location
           String? subLocation = address['suburb'] ?? address['neighbourhood'] ?? address['road'] ?? address['subdivision'];
           
-          // Fallback: If sub-location is null, use city
-          subLocation ??= city;
+          // Fallback: If sub-location is null, leave it empty to allow manual entry
+          subLocation ??= '';
 
           String fullLocation = state.isNotEmpty ? "$city, $state" : city;
 
@@ -111,7 +111,7 @@ class LocationService {
           return {
             'description': description,
             'city': city,
-            'subLocation': sub.isNotEmpty ? sub : city,
+            'subLocation': sub.isNotEmpty ? sub : '',
             'lat': double.tryParse(item['lat'].toString()),
             'lon': double.tryParse(item['lon'].toString()),
           };
