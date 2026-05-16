@@ -188,6 +188,10 @@ class _PostCardState extends ConsumerState<PostCard> {
     bool isJobPost,
   ) {
     final auth = ref.read(authProvider);
+    final trueOwnerUid = widget.post['isShared'] == true 
+        ? widget.post['sharedByUserId'] 
+        : postUid;
+        
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -197,24 +201,26 @@ class _PostCardState extends ConsumerState<PostCard> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (auth?.uid == postUid || auth?.role == 'admin') ...[
+            if (auth?.uid == trueOwnerUid || auth?.role == 'admin') ...[
+              if (widget.post['isShared'] != true) ...[
+                ListTile(
+                  leading: const Icon(Icons.edit_outlined, color: Colors.blue),
+                  title: const Text('Edit Post'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push('/feed/create', extra: widget.post);
+                  },
+                ),
+              ],
               ListTile(
-                leading: const Icon(Icons.edit_outlined, color: Colors.blue),
-                title: const Text('Edit Post'),
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push('/feed/create', extra: widget.post);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                title: const Text('Delete Post', style: TextStyle(color: Colors.red)),
+                leading: Icon(widget.post['isShared'] == true ? Icons.remove_circle_outline_rounded : Icons.delete_outline_rounded, color: Colors.red),
+                title: Text(widget.post['isShared'] == true ? 'Unshare Post' : 'Delete Post', style: const TextStyle(color: Colors.red)),
                 onTap: () {
                   Navigator.pop(context);
                   _showDeleteConfirmation(context, postId);
                 },
               ),
-              if (widget.post['isFeatured'] != true)
+              if (widget.post['isFeatured'] != true && widget.post['isShared'] != true)
                 ListTile(
                   leading: const Icon(Icons.bolt_rounded, color: Colors.amber),
                   title: const Text('Boost Post (80 Credits)'),
@@ -343,11 +349,12 @@ class _PostCardState extends ConsumerState<PostCard> {
   }
 
   void _showDeleteConfirmation(BuildContext context, String postId) {
+    final isShared = widget.post['isShared'] == true;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Post?'),
-        content: const Text('This action cannot be undone.'),
+        title: Text(isShared ? 'Unshare Post?' : 'Delete Post?'),
+        content: Text(isShared ? 'This will remove the shared post from your profile.' : 'This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -355,16 +362,32 @@ class _PostCardState extends ConsumerState<PostCard> {
           ),
           ElevatedButton(
             onPressed: () async {
-              await PostService.deletePost(postId);
-              if (context.mounted) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Post deleted.')),
-                );
+              Navigator.pop(context);
+              try {
+                await PostService.deletePost(postId);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(isShared ? 'Post unshared.' : 'Post deleted.'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete post: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(isShared ? 'Unshare' : 'Delete'),
           ),
         ],
       ),
@@ -523,21 +546,24 @@ class _PostCardState extends ConsumerState<PostCard> {
                   color: Colors.orange.withOpacity(0.1),
                   border: Border(bottom: BorderSide(color: Colors.orange.withOpacity(0.3))),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.hourglass_empty_rounded, color: Colors.orange, size: 14),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'PENDING APPROVAL - Only visible to you',
-                      style: TextStyle(
-                        color: Colors.orange, 
-                        fontSize: 10, 
-                        fontWeight: FontWeight.bold, 
-                        letterSpacing: 0.5
-                      ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.hourglass_empty_rounded, color: Colors.orange, size: 14),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'PENDING APPROVAL - Only visible to you',
+                            style: TextStyle(
+                              color: Colors.orange, 
+                              fontSize: 10, 
+                              fontWeight: FontWeight.bold, 
+                              letterSpacing: 0.5
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
               )
             else if (post['hasPendingEdit'] == true && auth?.uid == uid)
               Container(
@@ -547,21 +573,24 @@ class _PostCardState extends ConsumerState<PostCard> {
                   color: Colors.blue.withOpacity(0.1),
                   border: Border(bottom: BorderSide(color: Colors.blue.withOpacity(0.3))),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.edit_note_rounded, color: Colors.blue, size: 14),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'PENDING EDIT - Awaiting admin approval',
-                      style: TextStyle(
-                        color: Colors.blue, 
-                        fontSize: 10, 
-                        fontWeight: FontWeight.bold, 
-                        letterSpacing: 0.5
-                      ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.edit_note_rounded, color: Colors.blue, size: 14),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'PENDING EDIT - Awaiting admin approval',
+                            style: TextStyle(
+                              color: Colors.blue, 
+                              fontSize: 10, 
+                              fontWeight: FontWeight.bold, 
+                              letterSpacing: 0.5
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
               ),
             if (isAdminPost)
               GestureDetector(
@@ -828,24 +857,28 @@ class _PostCardState extends ConsumerState<PostCard> {
                           const SizedBox(height: 2),
                           Row(
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary.withOpacity(
-                                    0.1,
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
                                   ),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  role.toUpperCase(),
-                                  style: TextStyle(
-                                    color: theme.colorScheme.primary,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0.5,
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary.withOpacity(
+                                      0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    role.toUpperCase(),
+                                    style: TextStyle(
+                                      color: theme.colorScheme.primary,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.5,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ),
@@ -878,34 +911,37 @@ class _PostCardState extends ConsumerState<PostCard> {
                       ),
                     ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (widget.post['applicationStatus'] != null)
-                            _buildStatusBadge(widget.post['applicationStatus']),
-                          IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            icon: Icon(
-                              Icons.more_vert_rounded,
-                              color: theme.colorScheme.onSurfaceVariant,
+                  Flexible(
+                    flex: 0,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (widget.post['applicationStatus'] != null)
+                              _buildStatusBadge(widget.post['applicationStatus']),
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              icon: Icon(
+                                Icons.more_vert_rounded,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              onPressed: () =>
+                                  _showPostOptionsPanel(
+                                    context, 
+                                    postId, 
+                                    uid, 
+                                    role == 'worker', 
+                                    isJobPost
+                                  ),
                             ),
-                            onPressed: () =>
-                                _showPostOptionsPanel(
-                                  context, 
-                                  postId, 
-                                  uid, 
-                                  role == 'worker', 
-                                  isJobPost
-                                ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -1782,13 +1818,16 @@ class _PostCardState extends ConsumerState<PostCard> {
         children: [
           Icon(icon, color: color, size: 12),
           const SizedBox(width: 4),
-          Text(
-            status.toUpperCase(),
-            style: TextStyle(
-              color: color,
-              fontSize: 9,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.5,
+          Flexible(
+            child: Text(
+              status.toUpperCase(),
+              style: TextStyle(
+                color: color,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

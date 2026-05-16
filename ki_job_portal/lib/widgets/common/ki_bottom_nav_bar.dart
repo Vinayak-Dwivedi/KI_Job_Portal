@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
+import '../../l10n/app_localizations.dart';
 
 class KIBottomNavBar extends ConsumerWidget {
   final int currentIndex;
@@ -36,19 +37,20 @@ class KIBottomNavBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final role = ref.watch(authProvider)?.role ?? 'worker';
+    final l10n = AppLocalizations.of(context)!;
     
     final List<_NavItem> items = [
-      const _NavItem(icon: Icons.home_rounded, label: 'Home'),
+      _NavItem(icon: Icons.home_rounded, label: l10n.home),
       _NavItem(
         icon: role == 'employer' ? Icons.people_outline_rounded : Icons.work_outline_rounded, 
-        label: role == 'employer' ? 'Workers' : 'Jobs'
+        label: role == 'employer' ? l10n.workers : l10n.jobs
       ),
-      const _NavItem(icon: null, label: 'Post'), // FAB center slot
+      _NavItem(icon: null, label: l10n.post), // FAB center slot
       _NavItem(
         icon: role == 'employer' ? Icons.assignment_outlined : Icons.card_membership_rounded, 
-        label: role == 'employer' ? 'My Jobs' : 'Sub'
+        label: role == 'employer' ? l10n.myJobs : l10n.sub
       ),
-      const _NavItem(icon: Icons.person_outline_rounded, label: 'Profile'),
+      _NavItem(icon: Icons.person_outline_rounded, label: l10n.profile),
     ];
 
     return Container(

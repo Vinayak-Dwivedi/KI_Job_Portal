@@ -12,6 +12,7 @@ import 'core/services/notification_service.dart';
 import 'providers/localization_provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/app_localizations.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,9 @@ void main() async {
   } catch (e) {
     print("❌ Firebase Initialization Error: $e");
   }
+  
+  // 🕒 Initialize Timeago Hindi
+  timeago.setLocaleMessages('hi', timeago.HiMessages());
   
   final prefs = await SharedPreferences.getInstance();
   

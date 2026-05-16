@@ -5,8 +5,10 @@ import 'package:ki_job_portal/models/subscription_plan_model.dart';
 import 'package:ki_job_portal/core/services/subscription_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:ki_job_portal/providers/auth_provider.dart';
+
 final subscriptionProvider = StreamProvider<SubscriptionModel?>((ref) {
-  final user = FirebaseAuth.instance.currentUser;
+  final user = ref.watch(authProvider);
   if (user == null) return Stream.value(null);
 
   return FirebaseFirestore.instance.collection('subscriptions').doc(user.uid).snapshots().map((doc) {

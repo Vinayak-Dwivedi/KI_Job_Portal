@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:ki_job_portal/core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/post_provider.dart';
+import 'package:ki_job_portal/l10n/app_localizations.dart';
 
 final unreadNotificationsCountProvider = StreamProvider.autoDispose<int>((ref) {
   final user = ref.watch(authProvider);
@@ -47,12 +48,12 @@ class NotificationsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final auth = ref.watch(authProvider);
     final uid = auth?.uid;
-
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'Notifications',
+          l10n.notifications,
           style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w800,
             fontSize: 20,
@@ -74,7 +75,7 @@ class NotificationsScreen extends ConsumerWidget {
             TextButton(
               onPressed: () => _markAllRead(uid),
               child: Text(
-                'Mark all read',
+                l10n.markAllRead,
                 style: GoogleFonts.plusJakartaSans(
                   color: AppColors.primary,
                   fontWeight: FontWeight.w700,
@@ -103,7 +104,7 @@ class NotificationsScreen extends ConsumerWidget {
                         Icon(Icons.notifications_off_outlined, size: 64, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3)),
                         const SizedBox(height: 16),
                         Text(
-                          'No notifications yet',
+                          l10n.noNotifications,
                           style: GoogleFonts.plusJakartaSans(
                             color: theme.colorScheme.onSurfaceVariant,
                             fontSize: 16,
@@ -112,7 +113,7 @@ class NotificationsScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'We\'ll notify you about important updates',
+                          l10n.notificationsHint,
                           style: GoogleFonts.plusJakartaSans(
                             color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
                             fontSize: 13,
@@ -130,12 +131,35 @@ class NotificationsScreen extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     final data = items[index];
                     final isRead = data['isRead'] ?? false;
-                    final title = data['title'] ?? 'Notification';
-                    final body = data['body'] ?? data['message'] ?? '';
                     final type = data['type'] ?? 'general';
                     final createdAt = data['createdAt'] as Timestamp?;
+                    
+                    // Localize title based on type
+                    String title;
+                    switch (type) {
+                      case 'chat': title = l10n.notif_chat_title; break;
+                      case 'post_like': title = l10n.notif_post_like_title; break;
+                      case 'post_comment': title = l10n.notif_post_comment_title; break;
+                      case 'post_approved': title = l10n.notif_post_approved_title; break;
+                      case 'invite': title = l10n.notif_invite_title; break;
+                      case 'post_share': title = l10n.notif_post_share_title; break;
+                      default: title = data['title'] ?? l10n.notif_default_title;
+                    }
+
+                    // Localize body based on type
+                    String body;
+                    switch (type) {
+                      case 'chat': body = l10n.notif_chat_body; break;
+                      case 'post_like': body = l10n.notif_post_like_body; break;
+                      case 'post_comment': body = l10n.notif_post_comment_body; break;
+                      case 'post_approved': body = l10n.notif_post_approved_body; break;
+                      case 'invite': body = l10n.notif_invite_body; break;
+                      case 'post_share': body = l10n.notif_post_share_body; break;
+                      default: body = data['body'] ?? data['message'] ?? '';
+                    }
+
                     final timeAgo = createdAt != null
-                        ? timeago.format(createdAt.toDate())
+                        ? timeago.format(createdAt.toDate(), locale: l10n.localeName)
                         : '';
 
                     return GestureDetector(
@@ -149,27 +173,44 @@ class NotificationsScreen extends ConsumerWidget {
                               .update({'isRead': true});
                         }
 
-                        // 🚀 Enhanced Navigation Logic
-                        if (type == 'chat' && data['chatId'] != null) {
-                          context.push('/chat/${data['chatId']}', extra: {
-                            'name': 'KI GLOBAL ADMIN', // Fallback
-                          });
-                        } else if ((type == 'post' || type == 'post_like' || type == 'post_comment' || type == 'post_approved' || type == 'post_share' || type == 'broadcast' || type == 'social') && data['postId'] != null) {
-                          // Navigate directly to the post detail screen
-                          context.push('/feed/post/${data['postId']}');
-                        } else if (type == 'post_approved') {
-                          // Old notification without postId — go to feed
-                          context.push('/feed');
-                        } else if (type == 'invite' && data['jobId'] != null) {
-                          // Deep-link to the specific job if invited
-                          context.push('/job/${data['jobId']}');
-                        } else if (type == 'invite') {
-                          context.push('/worker/jobs');
-                        } else if (type == 'broadcast' && data['jobId'] != null) {
-                          context.push('/job/${data['jobId']}');
-                        } else if (data['actorUid'] != null) {
-                          // If it's a general notification with an actor, go to their profile
-                          context.push('/profile/worker/${data['actorUid']}'); 
+                        final postId = data['postId'] as String?;
+                        final chatId = data['chatId'] as String?;
+                        final jobId = data['jobId'] as String?;
+                        final actorUid = data['actorUid'] as String?;
+
+                        switch (type) {
+                          case 'chat':
+                            if (chatId != null) {
+                              context.push('/chat/$chatId', extra: {'name': 'KI GLOBAL ADMIN'});
+                            }
+                            break;
+                          case 'post':
+                          case 'post_like':
+                          case 'post_comment':
+                          case 'post_approved':
+                          case 'post_share':
+                          case 'social':
+                          case 'broadcast':
+                          case 'success':
+                          case 'error':
+                          case 'warning':
+                            if (postId != null && postId.isNotEmpty) {
+                              context.push('/feed/post/$postId');
+                            } else if (['post_approved', 'post', 'success', 'error', 'warning'].contains(type)) {
+                              context.push('/feed');
+                            }
+                            break;
+                          case 'invite':
+                            if (jobId != null) {
+                              context.push('/job/$jobId');
+                            } else {
+                              context.push('/worker/jobs');
+                            }
+                            break;
+                          default:
+                            if (actorUid != null) {
+                              context.push('/profile/worker/$actorUid');
+                            }
                         }
                       },
                       child: Container(

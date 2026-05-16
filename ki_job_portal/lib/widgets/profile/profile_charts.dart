@@ -198,13 +198,14 @@ class _EarningsChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final hasData = data.any((d) => d.value > 0);
 
     return _ChartContainer(
-      title: 'Credit Activity',
+      title: l10n.creditActivity,
       icon: Icons.trending_up_rounded,
       iconColor: const Color(0xFF10B981),
-      child: hasData ? _buildChart(context) : _buildEmptyState('No credit activity yet'),
+      child: hasData ? _buildChart(context) : _buildEmptyState(l10n.noCreditActivity),
     );
   }
 
@@ -323,13 +324,14 @@ class _JobActivityChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final hasData = data.any((d) => d.value > 0);
 
     return _ChartContainer(
-      title: 'Work Activity',
+      title: l10n.workActivity,
       icon: Icons.bar_chart_rounded,
       iconColor: AppColors.primary,
-      child: hasData ? _buildChart(context) : _buildEmptyState('No work activity yet'),
+      child: hasData ? _buildChart(context) : _buildEmptyState(l10n.noWorkActivity),
     );
   }
 
@@ -433,12 +435,13 @@ class _RatingBreakdownChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return _ChartContainer(
-      title: 'Ratings & Reviews',
+      title: l10n.ratingsAndReviews,
       icon: Icons.star_rounded,
       iconColor: Colors.orange,
       child: total == 0
-          ? _buildEmptyState('No reviews yet')
+          ? _buildEmptyState(l10n.noReviewsYet)
           : _buildContent(context),
     );
   }

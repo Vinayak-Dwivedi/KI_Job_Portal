@@ -23,6 +23,7 @@ import '../../providers/relationship_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/profile/reviews_list_sheet.dart';
 import '../../widgets/subscription/subscription_gate_widget.dart';
+import '../../l10n/app_localizations.dart';
 
 class PublicProfileScreen extends ConsumerStatefulWidget {
   final String uid;
@@ -376,6 +377,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
     final creditsAsync = ref.watch(userCreditsProvider);
     final userPostsAsync = ref.watch(userPostsProvider(cleanUid));
     final auth = ref.watch(authProvider);
+    final l10n = AppLocalizations.of(context)!;
     final isOwner = auth?.uid == widget.uid;
 
     // ── Record Profile View handled in initState ──
@@ -554,13 +556,16 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                                     ),
                                     Row(
                                       children: [
-                                        Text(
-                                          '$userType • ${widget.role.toUpperCase()}',
-                                          style: const TextStyle(
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 13,
-                                            letterSpacing: 1,
+                                        Flexible(
+                                          child: Text(
+                                            '$userType • ${widget.role.toUpperCase()}',
+                                            style: const TextStyle(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 13,
+                                              letterSpacing: 1,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                       ],
@@ -607,7 +612,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                                             ),
                                           ),
                                           child: Text(
-                                            following ? 'Following' : 'Follow',
+                                            following ? l10n.following : l10n.follow,
                                             style: const TextStyle(
                                               fontWeight: FontWeight.w800,
                                               fontSize: 12,
@@ -628,8 +633,8 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                                               Icons.mail_rounded,
                                               size: 14,
                                             ),
-                                            label: const Text(
-                                              'Invite',
+                                            label: Text(
+                                              l10n.invite,
                                               style: TextStyle(
                                                 fontWeight: FontWeight.w800,
                                                 fontSize: 11,
@@ -676,7 +681,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                             onPressed: () => _handleRatingTap(context, ref, auth?.uid, cleanUid, widget.role),
                             icon: Icon(Icons.star_rounded, size: 20, color: canRate ? Colors.white : Theme.of(context).disabledColor),
                             label: Text(
-                              canRate ? 'LEAVE A RATING' : 'RATING LOCKED', 
+                              canRate ? l10n.leaveRating : l10n.ratingLocked,
                               style: GoogleFonts.plusJakartaSans(
                                 fontWeight: FontWeight.w800, 
                                 letterSpacing: 1,
@@ -765,7 +770,7 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                                       child: Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                                         children: [
-                                          _buildStatItem('Posts', stats.totalApprovedPosts),
+                                          _buildStatItem(l10n.posts, stats.totalApprovedPosts),
                                           _buildDivider(),
                                           StreamBuilder<int>(
                                             stream: ref.watch(relationshipProvider).getFollowerCount(cleanUid),
@@ -774,10 +779,10 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                                                 onTap: () => _showUserListSheet(
                                                   context, 
                                                   ref, 
-                                                  'Followers', 
+                                                  l10n.followers, 
                                                   ref.read(relationshipProvider).getFollowers(cleanUid)
                                                 ),
-                                                child: _buildStatItem('Followers', snapshot.data ?? 0),
+                                                child: _buildStatItem(l10n.followers, snapshot.data ?? 0),
                                               );
                                             }
                                           ),
@@ -789,10 +794,10 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                                                 onTap: () => _showUserListSheet(
                                                   context, 
                                                   ref, 
-                                                  'Following', 
+                                                  l10n.following, 
                                                   ref.read(relationshipProvider).getFollowing(cleanUid)
                                                 ),
-                                                child: _buildStatItem('Following', snapshot.data ?? 0),
+                                                child: _buildStatItem(l10n.following, snapshot.data ?? 0),
                                               );
                                             }
                                           ),

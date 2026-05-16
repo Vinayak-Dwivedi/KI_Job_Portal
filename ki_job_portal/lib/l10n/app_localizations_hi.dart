@@ -81,6 +81,16 @@ class AppLocalizationsHi extends AppLocalizations {
   String get notifications => 'सूचनाएं';
 
   @override
+  String get markAllRead => 'सभी पढ़े हुए के रूप में चिह्नित करें';
+
+  @override
+  String get noNotifications => 'अभी तक कोई सूचना नहीं';
+
+  @override
+  String get notificationsHint =>
+      'कुछ महत्वपूर्ण होने पर हम आपको सूचित करेंगे।';
+
+  @override
   String get notificationsSubtitle => 'अलर्ट और संदेश प्रबंधित करें';
 
   @override
@@ -447,4 +457,218 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get recruitmentCredits => 'भर्ती क्रेडिट';
+
+  @override
+  String get home => 'होम';
+
+  @override
+  String get jobs => 'नौकरियां';
+
+  @override
+  String get sub => 'प्लान';
+
+  @override
+  String get newPost => 'नई पोस्ट';
+
+  @override
+  String get whatDoYouWantToTalkAbout => 'आप किस बारे में बात करना चाहते हैं?';
+
+  @override
+  String get post => 'पोस्ट';
+
+  @override
+  String get jobApplications => 'नौकरी आवेदन';
+
+  @override
+  String get tabNew => 'नया';
+
+  @override
+  String get tabInvites => 'आमंत्रण';
+
+  @override
+  String get searchJobsHint => 'नौकरियां, कंपनियां खोजें...';
+
+  @override
+  String get unlockMoreOpportunities => 'अधिक अवसर अनलॉक करें';
+
+  @override
+  String get subscriptionPlans => 'सदस्यता योजनाएं';
+
+  @override
+  String get creditPacks => 'क्रेडिट पैक';
+
+  @override
+  String get choosePlan => 'योजना चुनें';
+
+  @override
+  String get contactDetails => 'संपर्क विवरण';
+
+  @override
+  String get call => 'कॉल करें';
+
+  @override
+  String get message_btn => 'संदेश';
+
+  @override
+  String get invite => 'आमंत्रित करें';
+
+  @override
+  String get follow => 'फॉलो करें';
+
+  @override
+  String get following => 'फॉलो कर रहे हैं';
+
+  @override
+  String get followers => 'फॉलोअर्स';
+
+  @override
+  String get rating => 'रेटिंग';
+
+  @override
+  String get workers => 'कारीगर';
+
+  @override
+  String get posts => 'पोस्ट';
+
+  @override
+  String get stats => 'आँकड़े';
+
+  @override
+  String get myCareer => 'मेरा करियर';
+
+  @override
+  String get leaveRating => 'रेटिंग दें';
+
+  @override
+  String get ratingLocked => 'रेटिंग लॉक है';
+
+  @override
+  String get securePayments => 'सुरक्षित भुगतान';
+
+  @override
+  String get cancelAnytime => 'किसी भी समय रद्द करें। कोई छुपा हुआ शुल्क नहीं।';
+
+  @override
+  String get securePaymentsFooter =>
+      '© 2024 KI मार्केटप्लेस। एन्क्रिप्टेड गेटवे के माध्यम से सुरक्षित भुगतान।';
+
+  @override
+  String get notif_chat_title => 'नया संदेश';
+
+  @override
+  String get notif_post_like_title => 'नई लाइक';
+
+  @override
+  String get notif_post_comment_title => 'नई टिप्पणी';
+
+  @override
+  String get notif_post_approved_title => 'पोस्ट स्वीकृत';
+
+  @override
+  String get notif_invite_title => 'नौकरी का आमंत्रण';
+
+  @override
+  String get notif_default_title => 'सूचना';
+
+  @override
+  String get notif_chat_body => 'आपके पास एक नया संदेश है';
+
+  @override
+  String get notif_post_like_body => 'किसी ने आपकी पोस्ट को लाइक किया';
+
+  @override
+  String get notif_post_comment_body => 'किसी ने आपकी पोस्ट पर टिप्पणी की';
+
+  @override
+  String get notif_post_approved_body => 'आपकी पोस्ट स्वीकृत हो गई है';
+
+  @override
+  String get notif_invite_body => 'आपके पास एक नया नौकरी आमंत्रण है';
+
+  @override
+  String get notif_post_share_title => 'पोस्ट साझा की गई';
+
+  @override
+  String get notif_post_share_body => 'किसी ने आपकी पोस्ट साझा की';
+  @override
+  String get listAvailability => 'उपलब्धता सूची';
+
+  @override
+  String get postAJob => 'नौकरी पोस्ट करें';
+
+  @override
+  String get selectSkillExpertise => 'अपना कौशल / विशेषज्ञता चुनें';
+
+  @override
+  String get expectedPay => 'अपेक्षित वेतन';
+
+  @override
+  String get salaryRate => 'वेतन / दर';
+
+  @override
+  String get location => 'स्थान';
+
+  @override
+  String get subLocationArea => 'उप-स्थान / क्षेत्र';
+
+  @override
+  String get experienceExample => 'अनुभव (जैसे 5 वर्ष)';
+
+  @override
+  String get specificSkills => 'विशिष्ट कौशल';
+
+  @override
+  String get saveDetails => 'विवरण सहेजें';
+
+  @override
+  String get addEventDetails => 'इवेंट विवरण जोड़ें';
+
+  @override
+  String get eventTitle => 'इवेंट का शीर्षक';
+
+  @override
+  String get selectDate => 'तिथि चुनें';
+
+  @override
+  String get selectTime => 'समय चुनें';
+
+  @override
+  String get saveEvent => 'इवेंट सहेजें';
+
+  @override
+  String get includedInPlan => 'आपकी योजना में शामिल है';
+
+  @override
+  String get activePlan => '✅ सक्रिय योजना';
+
+  @override
+  String get renewPlan => 'योजना नवीनीकृत करें';
+
+  @override
+  String get upgradeTo => '⬆ {planName} में अपग्रेड करें';
+
+  @override
+  String get creditsCount => '{count} क्रेडिट';
+
+  @override
+  String get buyBtn => 'खरीदें';
+
+  @override
+  String get creditActivity => 'क्रेडिट गतिविधि';
+
+  @override
+  String get workActivity => 'कार्य गतिविधि';
+
+  @override
+  String get noCreditActivity => 'अभी तक कोई क्रेडिट गतिविधि नहीं';
+
+  @override
+  String get noWorkActivity => 'अभी तक कोई कार्य गतिविधि नहीं';
+
+  @override
+  String get ratingsAndReviews => 'रेटिंग और समीक्षाएं';
+
+  @override
+  String get noReviewsYet => 'अभी तक कोई समीक्षा नहीं';
+
 }

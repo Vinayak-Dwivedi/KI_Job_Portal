@@ -94,11 +94,13 @@ class SubscriptionModel {
   }
 
   String get validityString {
-    if (validUntil == null) return "Expired";
-    final days = daysRemaining;
-    if (days < 0) return "Expired";
-    if (days == 0) return "Expires today!";
-    return "$days days remaining";
+    if (validUntil == null) return "Active";
+    final now = DateTime.now();
+    final diff = validUntil!.difference(now).inDays;
+    if (diff < 0) return "Expired";
+    if (diff == 0) return "Expires today";
+    if (diff == 1) return "1 day left";
+    return "$diff days left";
   }
 
   factory SubscriptionModel.fromMap(Map<String, dynamic> data) {

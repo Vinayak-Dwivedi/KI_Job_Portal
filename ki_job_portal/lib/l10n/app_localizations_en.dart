@@ -81,6 +81,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notifications => 'Notifications';
 
   @override
+  String get markAllRead => 'Mark all read';
+
+  @override
+  String get noNotifications => 'No notifications yet';
+
+  @override
+  String get notificationsHint =>
+      'We\'ll notify you when something important happens.';
+
+  @override
   String get notificationsSubtitle => 'Manage alerts and messages';
 
   @override
@@ -442,4 +452,218 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recruitmentCredits => 'Recruitment Credits';
+
+  @override
+  String get home => 'Home';
+
+  @override
+  String get jobs => 'Jobs';
+
+  @override
+  String get sub => 'Sub';
+
+  @override
+  String get newPost => 'New Post';
+
+  @override
+  String get whatDoYouWantToTalkAbout => 'What do you want to talk about?';
+
+  @override
+  String get post => 'Post';
+
+  @override
+  String get jobApplications => 'Job Applications';
+
+  @override
+  String get tabNew => 'New';
+
+  @override
+  String get tabInvites => 'Invites';
+
+  @override
+  String get searchJobsHint => 'Search jobs, companies...';
+
+  @override
+  String get unlockMoreOpportunities => 'Unlock More Opportunities';
+
+  @override
+  String get subscriptionPlans => 'Subscription Plans';
+
+  @override
+  String get creditPacks => 'Credit Packs';
+
+  @override
+  String get choosePlan => 'Choose Plan';
+
+  @override
+  String get contactDetails => 'Contact Details';
+
+  @override
+  String get call => 'Call';
+
+  @override
+  String get message_btn => 'Message';
+
+  @override
+  String get invite => 'Invite';
+
+  @override
+  String get follow => 'Follow';
+
+  @override
+  String get following => 'Following';
+
+  @override
+  String get followers => 'Followers';
+
+  @override
+  String get rating => 'Rating';
+
+  @override
+  String get workers => 'Workers';
+
+  @override
+  String get posts => 'Posts';
+
+  @override
+  String get stats => 'Stats';
+
+  @override
+  String get myCareer => 'MY CAREER';
+
+  @override
+  String get leaveRating => 'LEAVE A RATING';
+
+  @override
+  String get ratingLocked => 'RATING LOCKED';
+
+  @override
+  String get securePayments => 'SECURE PAYMENTS';
+
+  @override
+  String get cancelAnytime => 'Cancel anytime. No hidden charges.';
+
+  @override
+  String get securePaymentsFooter =>
+      '© 2024 KI Marketplace. Secure payments via encrypted gateways.';
+
+  @override
+  String get notif_chat_title => 'New Message';
+
+  @override
+  String get notif_post_like_title => 'New Like';
+
+  @override
+  String get notif_post_comment_title => 'New Comment';
+
+  @override
+  String get notif_post_approved_title => 'Post Approved';
+
+  @override
+  String get notif_invite_title => 'Job Invitation';
+
+  @override
+  String get notif_default_title => 'Notification';
+
+  @override
+  String get notif_chat_body => 'You have a new message';
+
+  @override
+  String get notif_post_like_body => 'Someone liked your post';
+
+  @override
+  String get notif_post_comment_body => 'Someone commented on your post';
+
+  @override
+  String get notif_post_approved_body => 'Your post has been approved';
+
+  @override
+  String get notif_invite_body => 'You have a new job invitation';
+
+  @override
+  String get notif_post_share_title => 'Post Shared';
+
+  @override
+  String get notif_post_share_body => 'Someone shared your post';
+  @override
+  String get listAvailability => 'List Availability';
+
+  @override
+  String get postAJob => 'Post a Job';
+
+  @override
+  String get selectSkillExpertise => 'Select your Skill / Expertise';
+
+  @override
+  String get expectedPay => 'Expected Pay';
+
+  @override
+  String get salaryRate => 'Salary / Rate';
+
+  @override
+  String get location => 'Location';
+
+  @override
+  String get subLocationArea => 'Sub-Location / Area';
+
+  @override
+  String get experienceExample => 'Experience (e.g. 5 Years)';
+
+  @override
+  String get specificSkills => 'Specific Skills';
+
+  @override
+  String get saveDetails => 'Save Details';
+
+  @override
+  String get addEventDetails => 'Add Event Details';
+
+  @override
+  String get eventTitle => 'Event Title';
+
+  @override
+  String get selectDate => 'Select Date';
+
+  @override
+  String get selectTime => 'Select Time';
+
+  @override
+  String get saveEvent => 'Save Event';
+
+  @override
+  String get includedInPlan => 'Included in your plan';
+
+  @override
+  String get activePlan => '✅ Active Plan';
+
+  @override
+  String get renewPlan => 'Renew Plan';
+
+  @override
+  String upgradeTo(String planName) => '⬆ Upgrade to $planName';
+
+  @override
+  String creditsCount(int count) => '$count Credits';
+
+  @override
+  String get buyBtn => 'Buy';
+
+  @override
+  String get creditActivity => 'Credit Activity';
+
+  @override
+  String get workActivity => 'Work Activity';
+
+  @override
+  String get noCreditActivity => 'No credit activity yet';
+
+  @override
+  String get noWorkActivity => 'No work activity yet';
+
+  @override
+  String get ratingsAndReviews => 'Ratings & Reviews';
+
+  @override
+  String get noReviewsYet => 'No reviews yet';
+
 }

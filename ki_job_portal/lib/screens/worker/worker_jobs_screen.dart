@@ -10,6 +10,7 @@ import '../../core/services/post_service.dart';
 import '../../core/services/invite_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../widgets/feed/post_card.dart';
+import '../../l10n/app_localizations.dart';
 
 
 class WorkerJobsScreen extends ConsumerStatefulWidget {
@@ -38,6 +39,7 @@ class _WorkerJobsScreenState extends ConsumerState<WorkerJobsScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final worker = ref.watch(workerProvider);
     final pendingInvites = ref.watch(pendingInvitesCountProvider);
 
@@ -68,18 +70,18 @@ class _WorkerJobsScreenState extends ConsumerState<WorkerJobsScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('MY CAREER',
-                            style: TextStyle(
+                        Text(l10n.myCareer,
+                            style: const TextStyle(
                                 color: Color(0xFF94A3B8),
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 1.5)),
-                        SizedBox(height: 4),
-                        Text('Job Applications',
-                            style: TextStyle(
+                        const SizedBox(height: 4),
+                        Text(l10n.jobApplications,
+                            style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w900,
                                 color: Color(0xFFE5E7EB),
@@ -127,6 +129,7 @@ class _WorkerJobsScreenState extends ConsumerState<WorkerJobsScreen>
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: TabBar(
+                    isScrollable: true,
                     controller: _tabController,
                     labelColor: Colors.white,
                     unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
@@ -147,14 +150,14 @@ class _WorkerJobsScreenState extends ConsumerState<WorkerJobsScreen>
                     unselectedLabelStyle: const TextStyle(
                         fontWeight: FontWeight.w700, fontSize: 12),
                     tabs: [
-                      const Tab(text: 'New'),
-                      const Tab(text: 'Applied'),
-                      const Tab(text: 'Saved'),
+                      Tab(text: l10n.tabNew),
+                      Tab(text: l10n.tabApplied),
+                      Tab(text: l10n.tabSaved),
                       Tab(
                         child: Stack(
                           clipBehavior: Clip.none,
                           children: [
-                            const Text('Invites'),
+                            Text(l10n.tabInvites),
                             if (pendingInvites > 0)
                               Positioned(
                                 top: -6,
@@ -203,7 +206,7 @@ class _WorkerJobsScreenState extends ConsumerState<WorkerJobsScreen>
                       onChanged: (val) => ref.read(jobFilterProvider.notifier).updateFilter((s) => s.copyWith(searchQuery: val)),
                       style: const TextStyle(fontSize: 14),
                       decoration: InputDecoration(
-                        hintText: 'Search jobs, companies...',
+                        hintText: l10n.searchJobsHint,
                         hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5), fontSize: 13),
                         prefixIcon: Icon(Icons.search_rounded, color: theme.colorScheme.onSurfaceVariant, size: 20),
                         border: InputBorder.none,

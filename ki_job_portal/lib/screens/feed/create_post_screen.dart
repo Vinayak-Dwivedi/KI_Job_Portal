@@ -12,6 +12,7 @@ import '../../providers/auth_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../widgets/common/location_picker_sheet.dart';
 import '../../core/services/location_service.dart';
+import '../../l10n/app_localizations.dart';
 
 class CreatePostScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? post;
@@ -284,6 +285,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     final theme = Theme.of(context);
     final isWorker = ref.read(authProvider)?.role == 'worker';
     
+    final l10n = AppLocalizations.of(context)!;
     String? tempSkill = _jobTitleController.text.isNotEmpty ? _jobTitleController.text : (_skillCategories.isNotEmpty ? _skillCategories.first : null);
     
     showDialog(
@@ -291,13 +293,13 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       builder: (context) {
         return StatefulBuilder(builder: (context, setDialogState) {
           return AlertDialog(
-            title: Text(isWorker ? 'List Availability' : 'Post a Job', style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(isWorker ? l10n.listAvailability : l10n.postAJob, style: const TextStyle(fontWeight: FontWeight.bold)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (isWorker) ...[
-                    const Text("Select your Skill / Expertise", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(l10n.selectSkillExpertise, style: const TextStyle(fontSize: 12, color: Colors.grey)),
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -320,10 +322,10 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                     _buildJobField('Job Title', _jobTitleController, theme),
                   ],
                   const SizedBox(height: 12),
-                  _buildJobField(isWorker ? 'Expected Pay' : 'Salary / Rate', _jobSalaryController, theme),
+                  _buildJobField(isWorker ? l10n.expectedPay : l10n.salaryRate, _jobSalaryController, theme),
                   const SizedBox(height: 12),
                   _buildJobField(
-                    'Location', 
+                    l10n.location, 
                     _jobLocationController, 
                     theme,
                     readOnly: true,
@@ -364,7 +366,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  _buildJobField('Sub-Location / Area', _jobSubLocationController, theme),
+                  _buildJobField(l10n.subLocationArea, _jobSubLocationController, theme),
                   if (_isAutoDetected)
                     Padding(
                       padding: const EdgeInsets.only(top: 4.0),
@@ -380,14 +382,14 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                       ),
                     ),
                   const SizedBox(height: 12),
-                  _buildJobField('Experience (e.g. 5 Years)', _jobExperienceController, theme),
+                  _buildJobField(l10n.experienceExample, _jobExperienceController, theme),
                   const SizedBox(height: 12),
-                  _buildJobField('Specific Skills', _jobSkillsController, theme),
-                ],
+                  _buildJobField(l10n.specificSkills, _jobSkillsController, theme),
+                  ],
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
               ElevatedButton(
                 onPressed: () {
                   setState(() {
@@ -402,7 +404,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                   });
                   Navigator.pop(context);
                 },
-                child: const Text('Save Details')
+                child: Text(l10n.saveDetails)
               )
             ],
           );
@@ -422,17 +424,17 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       context: context,
       builder: (context) {
         return StatefulBuilder(builder: (context, setDialogState) {
-          final theme = Theme.of(context);
+          final l10n = AppLocalizations.of(context)!;
           return AlertDialog(
-            title: Text('Add Event Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: theme.colorScheme.onSurface)),
+            title: Text(l10n.addEventDetails, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: theme.colorScheme.onSurface)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                   _buildJobField('Event Title', titleCtrl, theme),
+                   _buildJobField(l10n.eventTitle, titleCtrl, theme),
                    const SizedBox(height: 12),
                    _buildJobField(
-                     'Location', 
+                     l10n.location, 
                      locCtrl, 
                      theme,
                      readOnly: true,
@@ -487,11 +489,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                        ),
                      ),
                    const SizedBox(height: 12),
-                   _buildJobField('Sub-Location / Area', subLocCtrl, theme),
+                   _buildJobField(l10n.subLocationArea, subLocCtrl, theme),
                    const SizedBox(height: 16),
                    ListTile(
                      contentPadding: EdgeInsets.zero,
-                     title: Text(tempDate == null ? 'Select Date' : '${tempDate!.day}/${tempDate!.month}/${tempDate!.year}'),
+                     title: Text(tempDate == null ? l10n.selectDate : '${tempDate!.day}/${tempDate!.month}/${tempDate!.year}'),
                      trailing: const Icon(Icons.calendar_today),
                      onTap: () async {
                        final dt = await showDatePicker(context: context, initialDate: tempDate ?? DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime(2030));
@@ -500,7 +502,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                    ),
                    ListTile(
                      contentPadding: EdgeInsets.zero,
-                     title: Text(tempTime == null ? 'Select Time' : tempTime!.format(context)),
+                     title: Text(tempTime == null ? l10n.selectTime : tempTime!.format(context)),
                      trailing: const Icon(Icons.access_time),
                      onTap: () async {
                        final tm = await showTimePicker(context: context, initialTime: tempTime ?? TimeOfDay.now());
@@ -511,7 +513,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
               ElevatedButton(
                 onPressed: () {
                   setState(() {
@@ -523,7 +525,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                   });
                   Navigator.pop(context);
                 },
-                child: const Text('Save Event')
+                child: Text(l10n.saveEvent)
               )
             ],
           );
@@ -672,6 +674,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
       photoUrl = ref.watch(employerProvider)?.profilePhotoUrl;
     }
 
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -681,7 +684,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
           icon: Icon(Icons.close, color: theme.colorScheme.onSurface),
           onPressed: () => context.pop(),
         ),
-        title: Text(widget.post != null ? 'Edit Post' : 'New Post', 
+        title: Text(widget.post != null ? 'Edit Post' : l10n.newPost, 
           style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w900, fontSize: 20)),
         actions: [
           Padding(
@@ -697,7 +700,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
               ),
               child: _isLoading 
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : const Text('Post', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                : Text(l10n.post, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
             ),
           )
         ],
@@ -781,7 +784,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                     decoration: InputDecoration(
                       hintText: (_isJobPost || _isAvailabilityPost) 
                         ? (isWorker ? 'Tell employers why they should hire you...' : 'Describe the job requirements...') 
-                        : 'What do you want to talk about?',
+                        : l10n.whatDoYouWantToTalkAbout,
                       hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 18),
                       border: InputBorder.none,
                     ),

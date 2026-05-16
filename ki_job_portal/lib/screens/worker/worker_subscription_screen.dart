@@ -12,6 +12,7 @@ import 'package:ki_job_portal/screens/subscription/credit_checkout_screen.dart';
 import 'package:ki_job_portal/providers/promotions_provider.dart';
 import 'package:ki_job_portal/models/promotion_model.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:ki_job_portal/l10n/app_localizations.dart';
 
 class WorkerSubscriptionScreen extends ConsumerStatefulWidget {
   final int initialTab;
@@ -37,6 +38,7 @@ class _WorkerSubscriptionScreenState extends ConsumerState<WorkerSubscriptionScr
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -44,7 +46,7 @@ class _WorkerSubscriptionScreenState extends ConsumerState<WorkerSubscriptionScr
         backgroundColor: theme.cardColor,
         elevation: 0,
         title: Text(
-          'Unlock More Opportunities',
+          l10n.unlockMoreOpportunities,
           style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 17),
         ),
       ),
@@ -86,8 +88,8 @@ class _WorkerSubscriptionScreenState extends ConsumerState<WorkerSubscriptionScr
                 ),
                 child: Row(
                   children: [
-                    Expanded(child: _TabBtn(label: 'Subscription Plans', index: 0, current: _tabIndex, onTap: (i) => setState(() => _tabIndex = i))),
-                    Expanded(child: _TabBtn(label: 'Credit Packs', index: 1, current: _tabIndex, onTap: (i) => setState(() => _tabIndex = i))),
+                    Expanded(child: _TabBtn(label: l10n.subscriptionPlans, index: 0, current: _tabIndex, onTap: (i) => setState(() => _tabIndex = i))),
+                    Expanded(child: _TabBtn(label: l10n.creditPacks, index: 1, current: _tabIndex, onTap: (i) => setState(() => _tabIndex = i))),
                   ],
                 ),
               ),
@@ -99,13 +101,12 @@ class _WorkerSubscriptionScreenState extends ConsumerState<WorkerSubscriptionScr
               ref.watch(subscriptionPlansProvider).when(
                 data: (plans) {
                   final subState = ref.watch(subscriptionProvider);
+
+                  // ✅ Guard: don't render cards until subscription is known
+                  if (subState.isLoading) return _buildPlansSkeleton();
+                  if (subState.hasError) return Center(child: Text('Error loading subscription'));
+
                   final currentTier = subState.value?.currentTier ?? 'free';
-                  final otherPlans = plans;
-
-                  if (subState.isLoading) {
-                    return _buildPlansSkeleton();
-                  }
-
                   final currentPlan = plans.cast<SubscriptionPlan?>().firstWhere(
                     (p) => p?.id == currentTier,
                     orElse: () => null,
@@ -113,7 +114,7 @@ class _WorkerSubscriptionScreenState extends ConsumerState<WorkerSubscriptionScr
                   final currentPrice = currentPlan?.price ?? 0;
 
                   return Column(
-                    children: otherPlans.map((plan) => _PlanCard(
+                    children: plans.map((plan) => _PlanCard(
                       plan: plan,
                       selectedPlan: _selectedPlan,
                       currentSubscription: subState.value,
@@ -149,7 +150,7 @@ class _WorkerSubscriptionScreenState extends ConsumerState<WorkerSubscriptionScr
               decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(16)),
               child: Column(
                 children: [
-                  Text('SECURE PAYMENTS', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
+                  Text(l10n.securePayments, style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -162,9 +163,9 @@ class _WorkerSubscriptionScreenState extends ConsumerState<WorkerSubscriptionScr
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Text('Cancel anytime. No hidden charges.', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13), textAlign: TextAlign.center),
+                  Text(l10n.cancelAnytime, style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13), textAlign: TextAlign.center),
                   const SizedBox(height: 12),
-                  Text('© 2024 KI Marketplace. Secure payments via encrypted gateways.',
+                  Text(l10n.securePaymentsFooter,
                       style: TextStyle(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7), fontSize: 11), textAlign: TextAlign.center),
                 ],
               ),
@@ -428,7 +429,7 @@ class _PlanCard extends StatelessWidget {
   final SubscriptionPlan plan;
   final String? selectedPlan;
   final SubscriptionModel? currentSubscription;
-  final int currentPlanPrice;
+  final num currentPlanPrice;
   final void Function(String) onSelect;
 
   const _PlanCard({
@@ -450,27 +451,30 @@ class _PlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isCurrent = currentSubscription?.currentTier == plan.id && (currentSubscription?.isActive ?? false);
-    final bool isUpgrade = currentSubscription != null && (currentSubscription?.isActive ?? false) && plan.price > currentPlanPrice && !isCurrent;
-    final bool isDowngradeOrSame = currentSubscription != null && (currentSubscription?.isActive ?? false) && plan.price <= currentPlanPrice && !isCurrent;
+    final l10n = AppLocalizations.of(context)!;
+    final bool isCurrentPlan = currentSubscription?.currentTier == plan.id;
+    final bool isUpgrade = currentSubscription != null && plan.price > currentPlanPrice && !isCurrentPlan;
+    final bool isDowngradeOrSame = currentSubscription != null && plan.price <= currentPlanPrice && !isCurrentPlan;
+
+    print("DEBUG: plan.id=${plan.id}, currentTier=${currentSubscription?.currentTier}, isCurrentPlan=$isCurrentPlan, isActive=${currentSubscription?.isActive}");
     final hasBadge = plan.badgeLabel != null && plan.badgeLabel!.isNotEmpty;
     
     return Stack(
       clipBehavior: Clip.none,
       children: [
         GestureDetector(
-          onTap: (isCurrent || isDowngradeOrSame) ? null : () => onSelect(plan.id),
+          onTap: (isCurrentPlan || isDowngradeOrSame) ? null : () => onSelect(plan.id),
           child: Opacity(
             opacity: isDowngradeOrSame ? 0.5 : 1.0,
             child: Container(
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: isCurrent ? theme.cardColor : theme.cardColor,
+                color: isCurrentPlan ? theme.cardColor : theme.cardColor,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: isCurrent ? Colors.green.withOpacity(0.5) : (hasBadge ? AppColors.primary : theme.colorScheme.outline.withOpacity(0.1)), 
-                  width: hasBadge || isCurrent ? 2 : 1,
+                  color: isCurrentPlan ? Colors.green.withOpacity(0.5) : (hasBadge ? AppColors.primary : theme.colorScheme.outline.withOpacity(0.1)), 
+                  width: hasBadge || isCurrentPlan ? 2 : 1,
                 ),
                 boxShadow: hasBadge && !isDowngradeOrSame ? [
                   BoxShadow(color: AppColors.primary.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10))
@@ -506,7 +510,7 @@ class _PlanCard extends StatelessWidget {
                           const Icon(Icons.bolt, color: AppColors.primary, size: 16),
                           const SizedBox(width: 4),
                           Text(
-                            '${plan.credits} Credits',
+                            l10n.creditsCount(plan.credits.toString()),
                             style: GoogleFonts.plusJakartaSans(
                               color: theme.colorScheme.onSurfaceVariant,
                               fontSize: 12,
@@ -574,7 +578,7 @@ class _PlanCard extends StatelessWidget {
                 )),
 
                 const SizedBox(height: 24),
-                _buildActionButton(context, theme, isCurrent, hasBadge),
+                _buildActionButton(context, theme, hasBadge),
                 ],         // Column children
               ),           // Column
             ),             // Container
@@ -612,27 +616,30 @@ class _PlanCard extends StatelessWidget {
 
 
 
-  Widget _buildActionButton(BuildContext context, ThemeData theme, bool isCurrent, bool hasBadge) {
-    String label = 'Choose Plan';
+  Widget _buildActionButton(BuildContext context, ThemeData theme, bool hasBadge) {
+    final l10n = AppLocalizations.of(context)!;
+    String label = l10n.choosePlan;
     bool isDisabled = false;
     Color? bgColor = hasBadge ? AppColors.primary : theme.colorScheme.surfaceVariant.withOpacity(0.5);
     Color? fgColor = hasBadge ? Colors.white : theme.colorScheme.onSurface;
 
-    final bool isUpgrade = currentSubscription != null && (currentSubscription?.isActive ?? false) && plan.price > currentPlanPrice && !isCurrent;
-    final bool isDowngradeOrSame = currentSubscription != null && (currentSubscription?.isActive ?? false) && plan.price <= currentPlanPrice && !isCurrent;
+    final bool isCurrentPlan = currentSubscription?.currentTier == plan.id;
+    final bool isUpgrade = currentSubscription != null && plan.price > currentPlanPrice && !isCurrentPlan;
+    final bool isDowngradeOrSame = currentSubscription != null && plan.price <= currentPlanPrice && !isCurrentPlan;
 
-    if (isCurrent) {
-      label = '✅ Active Plan · ${currentSubscription!.validityString}';
-      isDisabled = true;
-      bgColor = Colors.green.withOpacity(0.1);
-      fgColor = Colors.green;
+    if (isCurrentPlan) {
+      final isActive = currentSubscription?.isActive ?? false;
+      label = isActive ? l10n.activePlan : l10n.renewPlan;
+      isDisabled = isActive;
+      bgColor = isActive ? Colors.green.withOpacity(0.1) : AppColors.primary;
+      fgColor = isActive ? Colors.green : Colors.white;
     } else if (isUpgrade) {
-      label = '⬆ Upgrade to ${plan.name}';
+      label = l10n.upgradeTo(plan.name);
       isDisabled = false;
       bgColor = AppColors.primary;
       fgColor = Colors.white;
     } else if (isDowngradeOrSame) {
-      label = 'Included in your plan';
+      label = l10n.includedInPlan;
       isDisabled = true;
       bgColor = theme.colorScheme.surfaceVariant.withOpacity(0.2);
       fgColor = theme.colorScheme.onSurface.withOpacity(0.3);
@@ -655,7 +662,7 @@ class _PlanCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           elevation: 0,
-          side: isCurrent ? const BorderSide(color: Colors.green, width: 1) : null,
+          side: isCurrentPlan ? const BorderSide(color: Colors.green, width: 1) : null,
         ),
         child: Text(
           label, 
@@ -675,6 +682,7 @@ class _CreditPack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       padding: const EdgeInsets.all(20),
@@ -705,7 +713,7 @@ class _CreditPack extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$amount Credits', 
+                  l10n.creditsCount(amount), 
                   style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 18, color: theme.colorScheme.onSurface),
                 ),
                 if (bonus.isNotEmpty) 
@@ -750,7 +758,7 @@ class _CreditPack extends StatelessWidget {
                     elevation: 0,
                   ),
                   child: Text(
-                    'Buy', 
+                    l10n.buyBtn, 
                     style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900, fontSize: 13),
                   ),
                 ),

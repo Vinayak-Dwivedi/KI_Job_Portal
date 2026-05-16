@@ -204,7 +204,17 @@ class PostService {
 
   // 🔥 Delete Post
   static Future<void> deletePost(String postId) async {
-    await _firestore.collection('posts').doc(postId).delete();
+    final doc = await _firestore.collection('posts').doc(postId).get();
+    if (doc.exists && doc.data()?['isShared'] == true) {
+      final originalPostId = doc.data()?['originalPostId'];
+      if (originalPostId != null) {
+        // Decrement the shares counter on the original post
+        await _firestore.collection('posts').doc(originalPostId).update({
+          'shares': FieldValue.increment(-1),
+        });
+      }
+    }
+    await doc.reference.delete();
   }
 
   // 🔥 Get Single Post
@@ -369,6 +379,37 @@ class PostService {
     });
 
     await notifyShare(originalPostId, sharerUid, sharerName, newPostRef.id);
+  }
+
+  static Future<void> unsharePost({
+    required String originalPostId,
+    required String sharerUid,
+  }) async {
+    // Find the shared post
+    final sharedPostQuery = await _firestore
+        .collection('posts')
+        .where('sharedByUserId', isEqualTo: sharerUid)
+        .where('originalPostId', isEqualTo: originalPostId)
+        .where('isShared', isEqualTo: true)
+        .get();
+
+    if (sharedPostQuery.docs.isEmpty) {
+      return; // Not shared
+    }
+
+    final batch = _firestore.batch();
+    
+    // Delete all shared instances (should usually be just 1, but just in case)
+    for (var doc in sharedPostQuery.docs) {
+      batch.delete(doc.reference);
+    }
+
+    // Decrement shares counter on the original post
+    batch.update(_firestore.collection('posts').doc(originalPostId), {
+      'shares': FieldValue.increment(-sharedPostQuery.docs.length),
+    });
+
+    await batch.commit();
   }
 
   static Stream<List<Map<String, dynamic>>> getComments(String postId) {
