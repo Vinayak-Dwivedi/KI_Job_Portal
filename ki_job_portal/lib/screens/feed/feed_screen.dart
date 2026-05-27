@@ -10,7 +10,7 @@ import '../../providers/worker_provider.dart';
 import '../../providers/employer_provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/feed/feed_filter_sheet.dart';
-
+import '../../providers/public_user_provider.dart';
 
 class FeedScreen extends ConsumerStatefulWidget {
   final String? targetPostId;
@@ -142,6 +142,37 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
             });
           }
 
+          List<Widget> feedItems = [];
+          feedItems.add(_buildCreatePostArea(context, theme, userPhoto));
+          feedItems.add(_buildFeaturedWorkers(theme));
+          
+          for (int i = 0; i < filteredPosts.length; i++) {
+            final post = filteredPosts[i];
+            final isHighlighted = post['id'] == _highlightedPostId;
+            
+            feedItems.add(
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 500),
+                decoration: BoxDecoration(
+                  border: isHighlighted 
+                    ? Border.all(color: AppColors.primary, width: 2)
+                    : null,
+                ),
+                child: PostCard(post: post),
+              )
+            );
+            
+            if (i == 1) {
+              feedItems.add(_buildSuggestedProfilesCarousel(theme, 'Suggested Employers', suggestedEmployersProvider));
+            }
+            if (i == 4) {
+              feedItems.add(_buildSuggestedProfilesCarousel(theme, 'Suggested Workers', suggestedWorkersProvider));
+            }
+            if (i == 7) {
+              feedItems.add(_buildSuggestedProfilesCarousel(theme, 'People You May Know', peopleYouMayKnowProvider));
+            }
+          }
+
           return RefreshIndicator(
             backgroundColor: theme.cardColor,
             color: AppColors.primary,
@@ -149,23 +180,8 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.only(top: 8),
-              itemCount: filteredPosts.length + 2,
-              itemBuilder: (context, index) {
-                if (index == 0) return _buildCreatePostArea(context, theme, userPhoto);
-                if (index == 1) return _buildFeaturedWorkers(theme);
-                final post = filteredPosts[index - 2];
-                final isHighlighted = post['id'] == _highlightedPostId;
-
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  decoration: BoxDecoration(
-                    border: isHighlighted 
-                      ? Border.all(color: AppColors.primary, width: 2)
-                      : null,
-                  ),
-                  child: PostCard(post: post),
-                );
-              },
+              itemCount: feedItems.length,
+              itemBuilder: (context, index) => feedItems[index],
             ),
           );
         },
@@ -397,6 +413,123 @@ class _FeedScreenState extends ConsumerState<FeedScreen> with SingleTickerProvid
                               child: const Text(
                                 'FEATURED',
                                 style: TextStyle(color: Colors.amber, fontSize: 8, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const Divider(),
+          ],
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildSuggestedProfilesCarousel(ThemeData theme, String title, dynamic provider) {
+    final AsyncValue<List<Map<String, dynamic>>> suggestedAsync = ref.watch(provider);
+    
+    return suggestedAsync.when(
+      data: (users) {
+        if (users.isEmpty) return const SizedBox.shrink();
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 180,
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                scrollDirection: Axis.horizontal,
+                itemCount: users.length,
+                itemBuilder: (context, index) {
+                  final user = users[index];
+                  final String name = user['name'] ?? user['companyName'] ?? user['contactName'] ?? 'User';
+                  final String role = user['role'] ?? 'user';
+                  final String? photoUrl = user['profilePhotoUrl'];
+                  final String displayRole = (role == 'worker' && user['skills'] != null && (user['skills'] as List).isNotEmpty)
+                      ? (user['skills'] as List).first.toString()
+                      : role.toUpperCase();
+                  
+                  return Container(
+                    width: 130,
+                    margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    clipBehavior: Clip.hardEdge,
+                    decoration: BoxDecoration(
+                      color: theme.cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: theme.colorScheme.outline.withOpacity(0.5)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 5,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: InkWell(
+                      onTap: () => context.push('/profile/$role/${user['id']}'),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircleAvatar(
+                              radius: 28,
+                              backgroundColor: theme.colorScheme.surfaceVariant,
+                              backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                                ? NetworkImage(photoUrl)
+                                : null,
+                              child: (photoUrl == null || photoUrl.isEmpty)
+                                ? Icon(Icons.person, color: theme.colorScheme.onSurfaceVariant)
+                                : null,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              name,
+                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                            Text(
+                              displayRole,
+                              style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 11),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                            const Spacer(),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Text(
+                                'Connect',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],

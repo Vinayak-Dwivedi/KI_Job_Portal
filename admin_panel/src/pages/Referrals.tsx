@@ -15,6 +15,8 @@ export default function Referrals() {
   const queryClient = useQueryClient();
   const [bonus, setBonus] = useState<number>(0);
   const [isActive, setIsActive] = useState<boolean>(true);
+  const [maxReferrals, setMaxReferrals] = useState<number>(0);
+  const [validityWindow, setValidityWindow] = useState<number>(30);
 
   const { data: history, isLoading: isHistoryLoading } = useQuery({
     queryKey: ["referrals_history"],
@@ -27,13 +29,20 @@ export default function Referrals() {
       const data = await fetchReferralSettings();
       setBonus(data.bonusPerReferral || 100);
       setIsActive(data.isActive ?? true);
+      setMaxReferrals(data.maxReferralsPerUser || 0);
+      setValidityWindow(data.validityWindowDays || 30);
       return data;
     },
   });
 
   const updateSettingsMutation = useMutation({
-    mutationFn: async (payload: { newBonus: number; newActive: boolean }) => {
-      await setDoc(doc(db, "settings", "referrals"), { bonusPerReferral: payload.newBonus, isActive: payload.newActive }, { merge: true });
+    mutationFn: async (payload: { newBonus: number; newActive: boolean; newMax: number; newWindow: number }) => {
+      await setDoc(doc(db, "settings", "referrals"), { 
+        bonusPerReferral: payload.newBonus, 
+        isActive: payload.newActive,
+        maxReferralsPerUser: payload.newMax,
+        validityWindowDays: payload.newWindow
+      }, { merge: true });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["referrals_settings"] });
@@ -75,7 +84,24 @@ export default function Referrals() {
                   onChange={(e) => setBonus(parseInt(e.target.value))}
                 />
               </div>
-              <p className="text-[10px] text-muted-foreground italic">Reward given to the referrer when a new user signs up.</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Max Referrals per User (0 = Unlimited)</label>
+              <Input 
+                type="number" 
+                value={maxReferrals} 
+                onChange={(e) => setMaxReferrals(parseInt(e.target.value))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Validity Window (Days)</label>
+              <Input 
+                type="number" 
+                value={validityWindow} 
+                onChange={(e) => setValidityWindow(parseInt(e.target.value))}
+              />
             </div>
             
             <div className="flex items-center space-x-2 pt-2">
@@ -92,7 +118,7 @@ export default function Referrals() {
               </label>
             </div>
 
-            <Button className="w-full mt-4" onClick={() => updateSettingsMutation.mutate({ newBonus: bonus, newActive: isActive })}>
+            <Button className="w-full mt-4" onClick={() => updateSettingsMutation.mutate({ newBonus: bonus, newActive: isActive, newMax: maxReferrals, newWindow: validityWindow })}>
               <Save className="w-4 h-4 mr-2" /> Update Program
             </Button>
           </CardContent>

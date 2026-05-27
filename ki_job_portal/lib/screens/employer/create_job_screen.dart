@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/services/category_service.dart';
+import '../../core/services/post_service.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/employer_provider.dart';
 import '../../widgets/common/location_picker_sheet.dart';
 
-class CreateJobScreen extends StatefulWidget {
+class CreateJobScreen extends ConsumerStatefulWidget {
   const CreateJobScreen({super.key});
 
   @override
-  State<CreateJobScreen> createState() => _CreateJobScreenState();
+  ConsumerState<CreateJobScreen> createState() => _CreateJobScreenState();
 }
 
-class _CreateJobScreenState extends State<CreateJobScreen> {
+class _CreateJobScreenState extends ConsumerState<CreateJobScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final titleController = TextEditingController();
@@ -60,21 +64,39 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     setState(() => isLoading = true);
 
     try {
-      await FirebaseFirestore.instance.collection('jobs').add({
-        'uid': "uid_9999999999", // ⚠️ replace later with auth uid
-        'title': titleController.text.trim(),
-        'category': _selectedCategory,
-        'description': descriptionController.text.trim(),
-        'wage': wageController.text.trim(),
-        'duration': durationController.text.trim(),
-        'workersNeeded': workersController.text.trim(),
-        'location': locationController.text.trim(),
-        'subLocation': subLocationController.text.trim(),
-        'experience': experienceController.text.trim(),
-        'skills': skillsController.text.trim(),
-        'createdAt': FieldValue.serverTimestamp(),
-        'status': 'active',
-      });
+      final user = ref.read(authProvider);
+      if (user == null) {
+        throw Exception("You must be logged in to post a job.");
+      }
+
+      final employer = ref.read(employerProvider);
+      final String employerName = employer?.name ?? user.phone;
+      final String profilePhoto = employer?.logoUrl ?? "";
+      final bool isVerified = employer?.isVerified ?? false;
+      final bool isFeatured = employer?.isFeatured ?? false;
+
+      await PostService.createPost(
+        uid: user.uid,
+        name: employerName,
+        role: user.role,
+        text: descriptionController.text.trim(),
+        profilePhotoUrl: profilePhoto,
+        isVerified: isVerified,
+        isJobPost: true,
+        jobTitle: titleController.text.trim(),
+        jobSalary: wageController.text.trim(),
+        jobExperience: experienceController.text.trim(),
+        jobSkills: skillsController.text.trim(),
+        location: locationController.text.trim(),
+        subLocation: subLocationController.text.trim(),
+        companyName: employer?.companyName ?? employerName,
+        category: _selectedCategory,
+        jobCategory: _selectedCategory,
+        duration: durationController.text.trim(),
+        workersNeeded: workersController.text.trim(),
+        jobType: 'Full-time', // Default to Full-time
+        isFeatured: isFeatured,
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("✅ Job Posted Successfully")),
@@ -274,6 +296,7 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
                 controller: subLocationController,
                 decoration: input("Sub-Location / Area"),
                 style: TextStyle(color: theme.colorScheme.onSurface),
+                validator: (v) => v!.trim().isEmpty ? "Required" : null,
               ),
               const SizedBox(height: 16),
               TextFormField(

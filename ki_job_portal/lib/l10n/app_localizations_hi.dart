@@ -377,6 +377,9 @@ class AppLocalizationsHi extends AppLocalizations {
   String get tabMyRequests => 'मेरे अनुरोध';
 
   @override
+  String get tabVisitors => 'दर्शक';
+
+  @override
   String get skills => 'कौशल';
 
   @override
@@ -390,6 +393,59 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get viewAll => 'सभी देखें';
+
+  @override
+  String get accountInformation => 'खाता जानकारी';
+
+  @override
+  String get contactPerson => 'संपर्क व्यक्ति';
+
+  @override
+  String get companyName => 'कंपनी का नाम';
+
+  @override
+  String get emailAddress => 'ईमेल पता';
+
+  @override
+  String get phoneNumber => 'फ़ोन नंबर';
+
+  @override
+  String get officeLocation => 'कार्यालय का स्थान';
+
+  @override
+  String get viewPublicProfile => 'सार्वजनिक प्रोफ़ाइल देखें';
+
+  @override
+  String get aboutCompany => 'कंपनी के बारे में';
+
+  @override
+  String get documentsCertifications => 'दस्तावेज़ और प्रमाणपत्र';
+
+  @override
+  String get noDocumentsUploaded => 'अभी तक कोई दस्तावेज़ अपलोड नहीं किया गया';
+
+  @override
+  String get noDescriptionCompany =>
+      'अभी तक कोई विवरण प्रदान नहीं किया गया है। अधिक पेशेवर श्रमिकों को आकर्षित करने के लिए अपनी कंपनी प्रोफ़ाइल जोड़ें।';
+
+  @override
+  String get whoViewedMyProfile => 'किसने मेरी प्रोफ़ाइल देखी?';
+
+  @override
+  String get expertiseAndBio => 'विशेषज्ञता और जीवनी';
+
+  @override
+  String get contactInformation => 'संपर्क जानकारी';
+
+  @override
+  String get locationLabel => 'स्थान';
+
+  @override
+  String get referralCodeLabel => 'रेफरल कोड';
+
+  @override
+  String get noDocumentsUploadedYet =>
+      'अभी तक कोई दस्तावेज़ अपलोड नहीं किया गया';
 
   @override
   String get noNewJobsAtTheMoment => 'फिलहाल कोई नई नौकरी नहीं।';
@@ -562,7 +618,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get notif_post_comment_title => 'नई टिप्पणी';
 
   @override
-  String get notif_post_approved_title => 'पोस्ट स्वीकृत';
+  String get notif_post_approved_title => 'पोस्ट स्वीकृत ✅';
 
   @override
   String get notif_invite_title => 'नौकरी का आमंत्रण';
@@ -580,7 +636,8 @@ class AppLocalizationsHi extends AppLocalizations {
   String get notif_post_comment_body => 'किसी ने आपकी पोस्ट पर टिप्पणी की';
 
   @override
-  String get notif_post_approved_body => 'आपकी पोस्ट स्वीकृत हो गई है';
+  String get notif_post_approved_body =>
+      'आपकी कम्युनिटी पोस्ट की समीक्षा हो गई है और अब यह सबके लिए लाइव है!';
 
   @override
   String get notif_invite_body => 'आपके पास एक नया नौकरी आमंत्रण है';
@@ -590,6 +647,7 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get notif_post_share_body => 'किसी ने आपकी पोस्ट साझा की';
+
   @override
   String get listAvailability => 'उपलब्धता सूची';
 
@@ -645,10 +703,14 @@ class AppLocalizationsHi extends AppLocalizations {
   String get renewPlan => 'योजना नवीनीकृत करें';
 
   @override
-  String upgradeTo(String planName) => '⬆ $planName में अपग्रेड करें';
+  String upgradeTo(String planName) {
+    return '⬆ $planName में अपग्रेड करें';
+  }
 
   @override
-  String creditsCount(int count) => '$count क्रेडिट';
+  String creditsCount(int count) {
+    return '$count क्रेडिट';
+  }
 
   @override
   String get buyBtn => 'खरीदें';
@@ -670,5 +732,10 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get noReviewsYet => 'अभी तक कोई समीक्षा नहीं';
+  @override
+  String get noBio => 'कोई जीवनी उपलब्ध नहीं है।';
+
+  @override
+  String get notSet => 'निर्धारित नहीं है';
 
 }

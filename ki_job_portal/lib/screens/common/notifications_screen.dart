@@ -196,7 +196,7 @@ class NotificationsScreen extends ConsumerWidget {
                           case 'warning':
                             if (postId != null && postId.isNotEmpty) {
                               context.push('/feed/post/$postId');
-                            } else if (['post_approved', 'post', 'success', 'error', 'warning'].contains(type)) {
+                            } else if (['post_approved', 'post', 'post_like', 'post_comment', 'post_share', 'success', 'error', 'warning'].contains(type)) {
                               context.push('/feed');
                             }
                             break;
@@ -205,6 +205,19 @@ class NotificationsScreen extends ConsumerWidget {
                               context.push('/job/$jobId');
                             } else {
                               context.push('/worker/jobs');
+                            }
+                            break;
+                          case 'application':
+                            if (jobId != null) {
+                              final isEmployer = auth?.role == 'employer';
+                              if (isEmployer) {
+                                context.push('/job/$jobId/applicants');
+                              } else {
+                                context.push('/job/$jobId');
+                              }
+                            } else {
+                              final isEmployer = auth?.role == 'employer';
+                              context.push(isEmployer ? '/employer/dashboard' : '/worker/jobs');
                             }
                             break;
                           default:

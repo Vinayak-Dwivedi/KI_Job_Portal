@@ -5,6 +5,7 @@ import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/services/referral_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -23,7 +24,14 @@ class SettingsScreen extends ConsumerWidget {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: theme.colorScheme.onSurface, size: 20),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              final role = user?.role ?? 'worker';
+              context.go(role == 'employer' ? '/employer/dashboard' : '/worker/dashboard');
+            }
+          },
         ),
       ),
       body: SingleChildScrollView(
@@ -55,6 +63,21 @@ class SettingsScreen extends ConsumerWidget {
                   subtitle: AppLocalizations.of(context)!.languageSubtitle,
                   onTap: () => context.push('/settings/language'),
                   theme: theme,
+                ),
+                FutureBuilder<Map<String, dynamic>>(
+                  future: ReferralService.getReferralSettings(),
+                  builder: (context, snapshot) {
+                    final isActive = snapshot.data?['isActive'] ?? true;
+                    if (!isActive) return const SizedBox.shrink();
+                    
+                    return _SettingsTile(
+                      icon: Icons.card_giftcard_rounded,
+                      title: 'Refer & Earn',
+                      subtitle: 'Invite friends and earn free credits',
+                      onTap: () => context.push('/referral'),
+                      theme: theme,
+                    );
+                  }
                 ),
               ],
             ),

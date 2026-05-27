@@ -40,10 +40,18 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     _descController = TextEditingController(text: post?['text'] ?? '');
     _jobTitleController = TextEditingController(text: post?['jobTitle'] ?? '');
     _jobSalaryController = TextEditingController(text: post?['jobSalary'] ?? '');
-    _jobLocationController = TextEditingController(text: post?['location'] ?? '');
+    final rawLoc = post?['location'];
+    final String initialLocation = rawLoc is Map
+        ? (rawLoc['address'] ?? '')
+        : (rawLoc?.toString() ?? '');
+    final String initialSubLocation = rawLoc is Map
+        ? (rawLoc['subLocation'] ?? post?['subLocation'] ?? '')
+        : (post?['subLocation']?.toString() ?? '');
+
+    _jobLocationController = TextEditingController(text: initialLocation);
     _jobExperienceController = TextEditingController(text: post?['jobExperience'] ?? '');
     _jobSkillsController = TextEditingController(text: post?['jobSkills'] ?? '');
-    _jobSubLocationController = TextEditingController(text: post?['subLocation'] ?? '');
+    _jobSubLocationController = TextEditingController(text: initialSubLocation);
     
     _fetchSkillCategories();
     
@@ -288,6 +296,14 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     final l10n = AppLocalizations.of(context)!;
     String? tempSkill = _jobTitleController.text.isNotEmpty ? _jobTitleController.text : (_skillCategories.isNotEmpty ? _skillCategories.first : null);
     
+    String? titleError;
+    String? salaryError;
+    String? locationError;
+    String? subLocationError;
+    String? experienceError;
+    String? skillsError;
+    String? dropdownError;
+
     showDialog(
       context: context,
       builder: (context) {
@@ -306,7 +322,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                       decoration: BoxDecoration(
                         color: theme.cardColor,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: theme.dividerColor),
+                        border: Border.all(color: dropdownError != null ? Colors.red : theme.dividerColor),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
@@ -314,21 +330,48 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                           isExpanded: true,
                           hint: const Text("Select Skill"),
                           items: _skillCategories.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                          onChanged: (val) => setDialogState(() => tempSkill = val),
+                          onChanged: (val) => setDialogState(() {
+                            tempSkill = val;
+                            dropdownError = null;
+                          }),
                         ),
                       ),
                     ),
+                    if (dropdownError != null) ...[
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4.0),
+                        child: Text(dropdownError!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                      ),
+                    ],
                   ] else ...[
-                    _buildJobField('Job Title', _jobTitleController, theme),
+                    _buildJobField(
+                      'Job Title', 
+                      _jobTitleController, 
+                      theme,
+                      errorText: titleError,
+                      onChanged: (v) {
+                        if (titleError != null) setDialogState(() => titleError = null);
+                      },
+                    ),
                   ],
                   const SizedBox(height: 12),
-                  _buildJobField(isWorker ? l10n.expectedPay : l10n.salaryRate, _jobSalaryController, theme),
+                  _buildJobField(
+                    isWorker ? l10n.expectedPay : l10n.salaryRate, 
+                    _jobSalaryController, 
+                    theme,
+                    errorText: salaryError,
+                    onChanged: (v) {
+                      if (salaryError != null) setDialogState(() => salaryError = null);
+                    },
+                  ),
                   const SizedBox(height: 12),
                   _buildJobField(
                     l10n.location, 
                     _jobLocationController, 
                     theme,
                     readOnly: true,
+                    errorText: locationError,
                     suffixIcon: _isDetectingLocation 
                       ? const Padding(
                           padding: EdgeInsets.all(12.0),
@@ -341,6 +384,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                               setDialogState(() {
                                 _jobLocationController.text = loc;
                                 _jobSubLocationController.text = sub;
+                                locationError = null;
+                                subLocationError = null;
                               });
                             },
                             onStateChanged: () => setDialogState(() {}),
@@ -356,6 +401,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                             setDialogState(() {
                               _jobLocationController.text = loc['city'] ?? loc['description'];
                               _jobSubLocationController.text = loc['subLocation'] ?? '';
+                              locationError = null;
+                              subLocationError = null;
                             });
                             setState(() {
                               _isAutoDetected = false;
@@ -366,7 +413,33 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  _buildJobField(l10n.subLocationArea, _jobSubLocationController, theme),
+                  _buildJobField(
+                    l10n.subLocationArea, 
+                    _jobSubLocationController, 
+                    theme,
+                    errorText: subLocationError,
+                    onChanged: (v) {
+                      if (subLocationError != null) setDialogState(() => subLocationError = null);
+                    },
+                    suffixIcon: _isDetectingLocation
+                      ? const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                        )
+                      : IconButton(
+                          icon: Icon(Icons.my_location, size: 18, color: _isAutoDetected ? Colors.green : null),
+                          tooltip: 'Auto-detect sub-area',
+                          onPressed: () => _autoDetectLocation(
+                            onDetected: (loc, sub) {
+                              setDialogState(() {
+                                _jobSubLocationController.text = sub.isNotEmpty ? sub : _jobSubLocationController.text;
+                                subLocationError = null;
+                              });
+                            },
+                            onStateChanged: () => setDialogState(() {}),
+                          ),
+                        ),
+                  ),
                   if (_isAutoDetected)
                     Padding(
                       padding: const EdgeInsets.only(top: 4.0),
@@ -382,9 +455,25 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                       ),
                     ),
                   const SizedBox(height: 12),
-                  _buildJobField(l10n.experienceExample, _jobExperienceController, theme),
+                  _buildJobField(
+                    l10n.experienceExample, 
+                    _jobExperienceController, 
+                    theme,
+                    errorText: experienceError,
+                    onChanged: (v) {
+                      if (experienceError != null) setDialogState(() => experienceError = null);
+                    },
+                  ),
                   const SizedBox(height: 12),
-                  _buildJobField(l10n.specificSkills, _jobSkillsController, theme),
+                  _buildJobField(
+                    l10n.specificSkills, 
+                    _jobSkillsController, 
+                    theme,
+                    errorText: skillsError,
+                    onChanged: (v) {
+                      if (skillsError != null) setDialogState(() => skillsError = null);
+                    },
+                  ),
                   ],
               ),
             ),
@@ -392,6 +481,26 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
               TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
               ElevatedButton(
                 onPressed: () {
+                  setDialogState(() {
+                    titleError = !isWorker && _jobTitleController.text.trim().isEmpty ? "Job Title is required" : null;
+                    dropdownError = isWorker && tempSkill == null ? "Skill category is required" : null;
+                    salaryError = _jobSalaryController.text.trim().isEmpty ? "Salary/Pay is required" : null;
+                    locationError = _jobLocationController.text.trim().isEmpty ? "Location is required" : null;
+                    subLocationError = _jobSubLocationController.text.trim().isEmpty ? "Sub-Location is required" : null;
+                    experienceError = _jobExperienceController.text.trim().isEmpty ? "Experience is required" : null;
+                    skillsError = _jobSkillsController.text.trim().isEmpty ? "Specific skills are required" : null;
+                  });
+
+                  if ((isWorker && (tempSkill == null || dropdownError != null)) ||
+                      (!isWorker && titleError != null) ||
+                      salaryError != null ||
+                      locationError != null ||
+                      subLocationError != null ||
+                      experienceError != null ||
+                      skillsError != null) {
+                    return;
+                  }
+
                   setState(() {
                     if (isWorker) {
                       _jobTitleController.text = tempSkill ?? '';
@@ -490,7 +599,28 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
                        ),
                      ),
                    const SizedBox(height: 12),
-                   _buildJobField(l10n.subLocationArea, subLocCtrl, theme),
+                   _buildJobField(
+                     l10n.subLocationArea, 
+                     subLocCtrl, 
+                     theme,
+                     suffixIcon: _isDetectingLocation
+                       ? const Padding(
+                           padding: EdgeInsets.all(12.0),
+                           child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                         )
+                       : IconButton(
+                           icon: Icon(Icons.my_location, size: 18, color: _isAutoDetected ? Colors.green : null),
+                           tooltip: 'Auto-detect sub-area',
+                           onPressed: () => _autoDetectLocation(
+                             onDetected: (loc, sub) {
+                               setDialogState(() {
+                                 subLocCtrl.text = sub.isNotEmpty ? sub : subLocCtrl.text;
+                               });
+                             },
+                             onStateChanged: () => setDialogState(() {}),
+                           ),
+                         ),
+                   ),
                    const SizedBox(height: 16),
                    ListTile(
                      contentPadding: EdgeInsets.zero,
@@ -543,6 +673,25 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         const SnackBar(content: Text('Please add some text or an image to post!')),
       );
       return;
+    }
+
+    if (_isJobPost || _isAvailabilityPost) {
+      final title = _jobTitleController.text.trim();
+      final salary = _jobSalaryController.text.trim();
+      final location = _jobLocationController.text.trim();
+      final subLocation = _jobSubLocationController.text.trim();
+      final experience = _jobExperienceController.text.trim();
+      final skills = _jobSkillsController.text.trim();
+
+      if (title.isEmpty || salary.isEmpty || location.isEmpty || subLocation.isEmpty || experience.isEmpty || skills.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter all mandatory fields (Title, Pay/Salary, Location, Sub-Location, Experience, Skills) by tapping the Edit icon!'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
     }
 
     setState(() => _isLoading = true);
@@ -971,11 +1120,21 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     );
   }
 
-  Widget _buildJobField(String hint, TextEditingController controller, ThemeData theme, {bool readOnly = false, VoidCallback? onTap, Widget? suffixIcon}) {
+  Widget _buildJobField(
+    String hint, 
+    TextEditingController controller, 
+    ThemeData theme, {
+    bool readOnly = false, 
+    VoidCallback? onTap, 
+    Widget? suffixIcon,
+    String? errorText,
+    ValueChanged<String>? onChanged,
+  }) {
     return TextField(
       controller: controller,
       readOnly: readOnly,
       onTap: onTap,
+      onChanged: onChanged,
       style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
@@ -983,8 +1142,30 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: errorText != null ? const BorderSide(color: Colors.red) : BorderSide.none,
+        ),
+        enabledBorder: errorText != null
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Colors.red),
+              )
+            : OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+        focusedBorder: errorText != null
+            ? OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Colors.red, width: 1.5),
+              )
+            : OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        errorText: errorText,
       ),
     );
   }

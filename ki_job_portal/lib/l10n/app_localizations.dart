@@ -242,6 +242,24 @@ abstract class AppLocalizations {
   /// **'Notifications'**
   String get notifications;
 
+  /// No description provided for @markAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all read'**
+  String get markAllRead;
+
+  /// No description provided for @noNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications yet'**
+  String get noNotifications;
+
+  /// No description provided for @notificationsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll notify you when something important happens.'**
+  String get notificationsHint;
+
   /// No description provided for @notificationsSubtitle.
   ///
   /// In en, this message translates to:
@@ -788,6 +806,12 @@ abstract class AppLocalizations {
   /// **'MY REQUESTS'**
   String get tabMyRequests;
 
+  /// No description provided for @tabVisitors.
+  ///
+  /// In en, this message translates to:
+  /// **'VISITORS'**
+  String get tabVisitors;
+
   /// No description provided for @skills.
   ///
   /// In en, this message translates to:
@@ -817,6 +841,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View All'**
   String get viewAll;
+
+  /// No description provided for @accountInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Account Information'**
+  String get accountInformation;
+
+  /// No description provided for @contactPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact Person'**
+  String get contactPerson;
+
+  /// No description provided for @companyName.
+  ///
+  /// In en, this message translates to:
+  /// **'Company Name'**
+  String get companyName;
+
+  /// No description provided for @emailAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Email Address'**
+  String get emailAddress;
+
+  /// No description provided for @phoneNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone Number'**
+  String get phoneNumber;
+
+  /// No description provided for @officeLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Office Location'**
+  String get officeLocation;
+
+  /// No description provided for @viewPublicProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'View Public Profile'**
+  String get viewPublicProfile;
+
+  /// No description provided for @aboutCompany.
+  ///
+  /// In en, this message translates to:
+  /// **'About Company'**
+  String get aboutCompany;
+
+  /// No description provided for @documentsCertifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Documents & Certifications'**
+  String get documentsCertifications;
+
+  /// No description provided for @noDocumentsUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'No documents uploaded yet'**
+  String get noDocumentsUploaded;
+
+  /// No description provided for @noDescriptionCompany.
+  ///
+  /// In en, this message translates to:
+  /// **'No description provided yet. Add your company profile to attract more professional workers.'**
+  String get noDescriptionCompany;
+
+  /// No description provided for @whoViewedMyProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Who viewed my profile?'**
+  String get whoViewedMyProfile;
+
+  /// No description provided for @expertiseAndBio.
+  ///
+  /// In en, this message translates to:
+  /// **'Expertise & Bio'**
+  String get expertiseAndBio;
+
+  /// No description provided for @contactInformation.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact Information'**
+  String get contactInformation;
+
+  /// No description provided for @locationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get locationLabel;
+
+  /// No description provided for @referralCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Referral Code'**
+  String get referralCodeLabel;
+
+  /// No description provided for @noDocumentsUploadedYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No documents uploaded yet'**
+  String get noDocumentsUploadedYet;
 
   /// No description provided for @noNewJobsAtTheMoment.
   ///
@@ -949,80 +1075,434 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Recruitment Credits'**
   String get recruitmentCredits;
-  String get markAllRead;
-  String get noNotifications;
-  String get notificationsHint;
+
+  /// No description provided for @home.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
   String get home;
+
+  /// No description provided for @jobs.
+  ///
+  /// In en, this message translates to:
+  /// **'Jobs'**
   String get jobs;
+
+  /// No description provided for @sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub'**
   String get sub;
+
+  /// No description provided for @newPost.
+  ///
+  /// In en, this message translates to:
+  /// **'New Post'**
   String get newPost;
+
+  /// No description provided for @whatDoYouWantToTalkAbout.
+  ///
+  /// In en, this message translates to:
+  /// **'What do you want to talk about?'**
   String get whatDoYouWantToTalkAbout;
+
+  /// No description provided for @post.
+  ///
+  /// In en, this message translates to:
+  /// **'Post'**
   String get post;
+
+  /// No description provided for @jobApplications.
+  ///
+  /// In en, this message translates to:
+  /// **'Job Applications'**
   String get jobApplications;
+
+  /// No description provided for @tabNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
   String get tabNew;
+
+  /// No description provided for @tabInvites.
+  ///
+  /// In en, this message translates to:
+  /// **'Invites'**
   String get tabInvites;
+
+  /// No description provided for @searchJobsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search jobs, companies...'**
   String get searchJobsHint;
+
+  /// No description provided for @unlockMoreOpportunities.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock More Opportunities'**
   String get unlockMoreOpportunities;
+
+  /// No description provided for @subscriptionPlans.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription Plans'**
   String get subscriptionPlans;
+
+  /// No description provided for @creditPacks.
+  ///
+  /// In en, this message translates to:
+  /// **'Credit Packs'**
   String get creditPacks;
+
+  /// No description provided for @choosePlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Plan'**
   String get choosePlan;
+
+  /// No description provided for @contactDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact Details'**
   String get contactDetails;
+
+  /// No description provided for @call.
+  ///
+  /// In en, this message translates to:
+  /// **'Call'**
   String get call;
+
+  /// No description provided for @message_btn.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
   String get message_btn;
+
+  /// No description provided for @invite.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite'**
   String get invite;
+
+  /// No description provided for @follow.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow'**
   String get follow;
+
+  /// No description provided for @following.
+  ///
+  /// In en, this message translates to:
+  /// **'Following'**
   String get following;
+
+  /// No description provided for @followers.
+  ///
+  /// In en, this message translates to:
+  /// **'Followers'**
   String get followers;
+
+  /// No description provided for @rating.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating'**
   String get rating;
+
+  /// No description provided for @workers.
+  ///
+  /// In en, this message translates to:
+  /// **'Workers'**
   String get workers;
+
+  /// No description provided for @posts.
+  ///
+  /// In en, this message translates to:
+  /// **'Posts'**
   String get posts;
+
+  /// No description provided for @stats.
+  ///
+  /// In en, this message translates to:
+  /// **'Stats'**
   String get stats;
+
+  /// No description provided for @myCareer.
+  ///
+  /// In en, this message translates to:
+  /// **'MY CAREER'**
   String get myCareer;
+
+  /// No description provided for @leaveRating.
+  ///
+  /// In en, this message translates to:
+  /// **'LEAVE A RATING'**
   String get leaveRating;
+
+  /// No description provided for @ratingLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'RATING LOCKED'**
   String get ratingLocked;
+
+  /// No description provided for @securePayments.
+  ///
+  /// In en, this message translates to:
+  /// **'SECURE PAYMENTS'**
   String get securePayments;
+
+  /// No description provided for @cancelAnytime.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel anytime. No hidden charges.'**
   String get cancelAnytime;
+
+  /// No description provided for @securePaymentsFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'© 2024 KI Marketplace. Secure payments via encrypted gateways.'**
   String get securePaymentsFooter;
+
+  /// No description provided for @notif_chat_title.
+  ///
+  /// In en, this message translates to:
+  /// **'New Message'**
   String get notif_chat_title;
+
+  /// No description provided for @notif_post_like_title.
+  ///
+  /// In en, this message translates to:
+  /// **'New Like'**
   String get notif_post_like_title;
+
+  /// No description provided for @notif_post_comment_title.
+  ///
+  /// In en, this message translates to:
+  /// **'New Comment'**
   String get notif_post_comment_title;
+
+  /// No description provided for @notif_post_approved_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Post Approved'**
   String get notif_post_approved_title;
+
+  /// No description provided for @notif_invite_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Job Invitation'**
   String get notif_invite_title;
+
+  /// No description provided for @notif_default_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification'**
   String get notif_default_title;
+
+  /// No description provided for @notif_chat_body.
+  ///
+  /// In en, this message translates to:
+  /// **'You have a new message'**
   String get notif_chat_body;
+
+  /// No description provided for @notif_post_like_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone liked your post'**
   String get notif_post_like_body;
+
+  /// No description provided for @notif_post_comment_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone commented on your post'**
   String get notif_post_comment_body;
+
+  /// No description provided for @notif_post_approved_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Your post has been approved'**
   String get notif_post_approved_body;
+
+  /// No description provided for @notif_invite_body.
+  ///
+  /// In en, this message translates to:
+  /// **'You have a new job invitation'**
   String get notif_invite_body;
+
+  /// No description provided for @notif_post_share_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Post Shared'**
   String get notif_post_share_title;
+
+  /// No description provided for @notif_post_share_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone shared your post'**
   String get notif_post_share_body;
+
+  /// No description provided for @listAvailability.
+  ///
+  /// In en, this message translates to:
+  /// **'List Availability'**
   String get listAvailability;
+
+  /// No description provided for @postAJob.
+  ///
+  /// In en, this message translates to:
+  /// **'Post a Job'**
   String get postAJob;
+
+  /// No description provided for @selectSkillExpertise.
+  ///
+  /// In en, this message translates to:
+  /// **'Select your Skill / Expertise'**
   String get selectSkillExpertise;
+
+  /// No description provided for @expectedPay.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected Pay'**
   String get expectedPay;
+
+  /// No description provided for @salaryRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Salary / Rate'**
   String get salaryRate;
+
+  /// No description provided for @location.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
   String get location;
+
+  /// No description provided for @subLocationArea.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-Location / Area'**
   String get subLocationArea;
+
+  /// No description provided for @experienceExample.
+  ///
+  /// In en, this message translates to:
+  /// **'Experience (e.g. 5 Years)'**
   String get experienceExample;
+
+  /// No description provided for @specificSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Specific Skills'**
   String get specificSkills;
+
+  /// No description provided for @saveDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Details'**
   String get saveDetails;
+
+  /// No description provided for @addEventDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Event Details'**
   String get addEventDetails;
+
+  /// No description provided for @eventTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Event Title'**
   String get eventTitle;
+
+  /// No description provided for @selectDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Date'**
   String get selectDate;
+
+  /// No description provided for @selectTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Time'**
   String get selectTime;
+
+  /// No description provided for @saveEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Event'**
   String get saveEvent;
+
+  /// No description provided for @includedInPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Included in your plan'**
   String get includedInPlan;
+
+  /// No description provided for @activePlan.
+  ///
+  /// In en, this message translates to:
+  /// **'✅ Active Plan'**
   String get activePlan;
+
+  /// No description provided for @renewPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Renew Plan'**
   String get renewPlan;
+
+  /// No description provided for @upgradeTo.
+  ///
+  /// In en, this message translates to:
+  /// **'⬆ Upgrade to {planName}'**
   String upgradeTo(String planName);
+
+  /// No description provided for @creditsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Credits'**
   String creditsCount(int count);
+
+  /// No description provided for @buyBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy'**
   String get buyBtn;
+
+  /// No description provided for @creditActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Credit Activity'**
   String get creditActivity;
+
+  /// No description provided for @workActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Work Activity'**
   String get workActivity;
+
+  /// No description provided for @noCreditActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'No credit activity yet'**
   String get noCreditActivity;
+
+  /// No description provided for @noWorkActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'No work activity yet'**
   String get noWorkActivity;
+
+  /// No description provided for @ratingsAndReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'Ratings & Reviews'**
   String get ratingsAndReviews;
+
+  /// No description provided for @noReviewsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No reviews yet'**
   String get noReviewsYet;
+  String get noBio;
+  String get notSet;
 }
 
 class _AppLocalizationsDelegate

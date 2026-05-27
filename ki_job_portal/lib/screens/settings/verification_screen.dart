@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/services/privacy_api_service.dart';
 
 class VerificationScreen extends ConsumerStatefulWidget {
   const VerificationScreen({super.key});
@@ -26,25 +26,50 @@ class _VerificationScreenState extends ConsumerState<VerificationScreen> {
     if (user == null) return;
 
     try {
-      final docs = await PrivacyApiService.getVerificationDocs(user.uid);
+      final role = user.role;
+      List<String> requiredDocs = [];
+      if (role == 'employer') {
+        requiredDocs = ['Company Registration', 'GST Certificate', 'Aadhar Card (Contact Person)'];
+      } else {
+        requiredDocs = ['Aadhar Card', 'Profile Photo'];
+      }
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('verification_docs')
+          .get();
+
+      final existingDocs = {
+        for (var doc in snapshot.docs) doc.id: doc.data()
+      };
+
       if (mounted) {
         setState(() {
-          _docs = docs.where((d) => d['name'] != 'PAN Card').map((doc) {
+          _docs = requiredDocs.map((docName) {
+            final docData = existingDocs[docName];
+            final status = docData?['status'] ?? 'Not Uploaded';
+
             IconData icon = Icons.description_outlined;
             Color color = AppColors.outlineVariant;
 
-            if (doc['name'] == 'Aadhar Card') {
+            if (docName.contains('Aadhar')) {
               icon = Icons.badge_outlined;
+            } else if (docName.contains('Registration') || docName.contains('GST')) {
+              icon = Icons.account_balance_outlined;
+            } else if (docName.contains('Photo')) {
+              icon = Icons.person_outline;
             }
 
-            if (doc['status'] == 'Verified') {
+            if (status == 'Verified') {
               color = AppColors.secondary;
-            } else if (doc['status'] == 'Pending') {
+            } else if (status == 'Pending') {
               color = Colors.amber;
             }
 
             return {
-              ...doc,
+              'name': docName,
+              'status': status,
               'icon': icon,
               'color': color,
             };
@@ -77,13 +102,33 @@ class _VerificationScreenState extends ConsumerState<VerificationScreen> {
     });
 
     try {
-      await PrivacyApiService.uploadVerificationDoc(
-        userId: user.uid,
-        documentName: docName,
-      );
+      // Simulate file upload delay
+      await Future.delayed(const Duration(seconds: 1));
+      
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('verification_docs')
+          .doc(docName)
+          .set({
+        'name': docName,
+        'status': 'Pending',
+        'uploadedAt': FieldValue.serverTimestamp(),
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Document uploaded successfully. Verification is pending.'), backgroundColor: AppColors.secondary),
+        );
+      }
     } catch (e) {
       debugPrint('Error uploading document: $e');
-      _loadVerificationDocs();
+      _loadVerificationDocs(); // Revert optimistic UI
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to upload document. Please try again.'), backgroundColor: AppColors.error),
+        );
+      }
     }
   }
 
@@ -146,7 +191,7 @@ class _VerificationScreenState extends ConsumerState<VerificationScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    isVerified ? 'Profile Verified' : 'Verification Under Review',
+                    isVerified ? 'Profile Verified' : 'Verification Status',
                     style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 8),

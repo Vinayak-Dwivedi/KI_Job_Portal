@@ -25,6 +25,26 @@ class _EmployerWorkersScreenState extends ConsumerState<EmployerWorkersScreen> {
     final results = ref.watch(searchResultsProvider);
     final workers = results['workers'] ?? [];
     final query = ref.watch(searchQueryProvider);
+    final workerListAsync = ref.watch(workerListProvider);
+
+    // Extract unique skills from all workers
+    final availableSkills = <String>{};
+    if (workerListAsync.value != null) {
+      for (final worker in workerListAsync.value!) {
+        final skills = worker['skills'] as List? ?? [];
+        for (final skill in skills) {
+          if (skill is String && skill.isNotEmpty) {
+            availableSkills.add(skill);
+          }
+        }
+      }
+    }
+    final sortedSkills = availableSkills.toList()..sort();
+    final filters = ref.watch(searchFiltersProvider);
+
+    // Show loading spinner only while initial data is being fetched
+    final isLoading = workerListAsync.isLoading;
+    final hasError = workerListAsync.hasError;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -44,38 +64,73 @@ class _EmployerWorkersScreenState extends ConsumerState<EmployerWorkersScreen> {
               borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
             ),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (val) => ref.read(searchQueryProvider.notifier).updateValue = val,
-              decoration: InputDecoration(
-                hintText: 'Search skills (e.g. Welding, Plumbing)',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: query.isNotEmpty 
-                  ? IconButton(icon: const Icon(Icons.clear), onPressed: () {
-                      _searchController.clear();
-                      ref.read(searchQueryProvider.notifier).clear();
-                    })
-                  : IconButton(icon: const Icon(Icons.filter_list_rounded), onPressed: () => context.push('/search')),
-                filled: true,
-                fillColor: theme.scaffoldBackgroundColor,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              ),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _searchController,
+                  onChanged: (val) => ref.read(searchQueryProvider.notifier).updateValue = val,
+                  decoration: InputDecoration(
+                    hintText: 'Search workers by name or skill…',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: query.isNotEmpty 
+                      ? IconButton(icon: const Icon(Icons.clear), onPressed: () {
+                          _searchController.clear();
+                          ref.read(searchQueryProvider.notifier).clear();
+                        })
+                      : IconButton(icon: const Icon(Icons.filter_list_rounded), onPressed: () => context.push('/search')),
+                    filled: true,
+                    fillColor: theme.scaffoldBackgroundColor,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: filters.skillType != null && sortedSkills.contains(filters.skillType) ? filters.skillType : null,
+                  hint: const Text('Filter by Profession (e.g. Web Dev)'),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: theme.scaffoldBackgroundColor,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                  isExpanded: true,
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('All Professions')),
+                    ...sortedSkills.map((s) => DropdownMenuItem(value: s, child: Text(s))),
+                  ],
+                  onChanged: (val) {
+                    ref.read(searchFiltersProvider.notifier).updateFilters(
+                      filters.copyWith(skillType: val)
+                    );
+                  },
+                ),
+              ],
             ),
           ),
 
           // ── Workers List ───────────────────────────────
           Expanded(
-            child: workers.isEmpty && query.isEmpty
-              ? _buildEmptyState(theme)
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: workers.length,
-                  itemBuilder: (context, index) {
-                    final worker = workers[index];
-                    return _buildWorkerCard(worker, theme);
-                  },
-                ),
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : hasError
+                    ? Center(
+                        child: Text(
+                          'Error loading workers: ${workerListAsync.error}',
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      )
+                    : workers.isEmpty
+                        ? (query.isEmpty && filters.isEmpty
+                            ? _buildEmptyState(theme)
+                            : _buildNoResultsState(theme, query))
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: workers.length,
+                            itemBuilder: (context, index) {
+                              return _buildWorkerCard(workers[index], theme);
+                            },
+                          ),
           ),
         ],
       ),
@@ -85,6 +140,17 @@ class _EmployerWorkersScreenState extends ConsumerState<EmployerWorkersScreen> {
   Widget _buildWorkerCard(Map<String, dynamic> worker, ThemeData theme) {
     final skills = (worker['skills'] as List? ?? []);
     
+    final rawLoc = worker['location'];
+    String locStr = 'No location';
+    if (rawLoc is Map) {
+      final addr = rawLoc['address'] ?? '';
+      final sub = rawLoc['subLocation'] ?? worker['subLocation'] ?? '';
+      locStr = sub.isNotEmpty ? '$sub, $addr' : (addr.isNotEmpty ? addr : 'No location');
+    } else if (rawLoc != null && rawLoc.toString().isNotEmpty) {
+      final sub = worker['subLocation'] ?? '';
+      locStr = sub.isNotEmpty ? '$sub, $rawLoc' : rawLoc.toString();
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -124,7 +190,7 @@ class _EmployerWorkersScreenState extends ConsumerState<EmployerWorkersScreen> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(worker['location'] ?? 'No location', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13)),
+                    Text(locStr, style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -162,6 +228,37 @@ class _EmployerWorkersScreenState extends ConsumerState<EmployerWorkersScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
               'Search for skilled workers by name or skills. You can also apply filters for better results.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoResultsState(ThemeData theme, String query) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), shape: BoxShape.circle),
+            child: const Icon(Icons.search_off_rounded, size: 64, color: Colors.orange),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            query.isEmpty ? 'No Workers Available' : 'No Karigars Found',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              query.isEmpty 
+                ? 'There are currently no registered workers.'
+                : 'We couldn\'t find any workers matching "$query". Try searching for other skills or names.',
               textAlign: TextAlign.center,
               style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 14),
             ),

@@ -51,10 +51,12 @@ class WorkerProfileScreen extends ConsumerWidget {
                 pinned: true,
                 backgroundColor: theme.scaffoldBackgroundColor,
                 elevation: 0,
-                leading: IconButton(
-                  icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
-                  onPressed: () => context.pop(),
-                ),
+                leading: context.canPop()
+                    ? IconButton(
+                        icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
+                        onPressed: () => context.pop(),
+                      )
+                    : null,
                 actions: [
                   IconButton(
                     icon: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded, color: theme.colorScheme.onSurface),
@@ -210,6 +212,25 @@ class WorkerProfileScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+                      if (!worker.isVerified) ...[
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () => context.push('/settings/verification'),
+                            icon: const Icon(Icons.verified_user_outlined, color: Colors.blue),
+                            label: const Text('GET VERIFIED', style: TextStyle(fontWeight: FontWeight.w900)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.withOpacity(0.1),
+                              foregroundColor: Colors.blue[800],
+                              side: BorderSide(color: Colors.blue.withOpacity(0.5)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              elevation: 0,
+                            ),
+                          ),
+                        ),
+                      ],
                       if (worker.isFeatured == false) ...[
                         const SizedBox(height: 12),
                         SizedBox(
@@ -245,13 +266,13 @@ class WorkerProfileScreen extends ConsumerWidget {
                     indicatorWeight: 3,
                     labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
                     tabs: [
-                      Tab(text: AppLocalizations.of(context)!.tabAbout),
-                      Tab(text: AppLocalizations.of(context)!.tabStats),
-                      Tab(text: AppLocalizations.of(context)!.tabPosts),
-                      Tab(text: AppLocalizations.of(context)!.tabSaved),
-                      Tab(text: AppLocalizations.of(context)!.tabApplied),
-                      Tab(text: AppLocalizations.of(context)!.tabMyRequests),
-                      const Tab(text: 'Visitors'),
+                      Tab(text: AppLocalizations.of(context)!.tabAbout.toUpperCase()),
+                      Tab(text: AppLocalizations.of(context)!.tabStats.toUpperCase()),
+                      Tab(text: AppLocalizations.of(context)!.tabPosts.toUpperCase()),
+                      Tab(text: AppLocalizations.of(context)!.tabSaved.toUpperCase()),
+                      Tab(text: AppLocalizations.of(context)!.tabApplied.toUpperCase()),
+                      Tab(text: AppLocalizations.of(context)!.tabMyRequests.toUpperCase()),
+                      Tab(text: AppLocalizations.of(context)!.tabVisitors.toUpperCase()),
                     ],
                   ),
                   theme.scaffoldBackgroundColor,
@@ -381,7 +402,7 @@ class WorkerProfileScreen extends ConsumerWidget {
                         const Icon(Icons.visibility_outlined, color: Colors.white, size: 18),
                         const SizedBox(width: 8),
                         Text(
-                          'Who viewed my profile?',
+                          AppLocalizations.of(context)!.whoViewedMyProfile,
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.9),
                             fontSize: 13,
@@ -397,10 +418,10 @@ class WorkerProfileScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 32),
 
-          _sectionHeader('Expertise & Bio', theme),
+          _sectionHeader(AppLocalizations.of(context)!.expertiseAndBio, theme),
           const SizedBox(height: 12),
           Text(
-            worker.bio.isNotEmpty ? worker.bio : 'No bio provided.',
+            worker.bio.isNotEmpty ? worker.bio : AppLocalizations.of(context)!.noBio,
             style: TextStyle(color: theme.colorScheme.onSurfaceVariant, height: 1.5),
           ),
           const SizedBox(height: 24),
@@ -420,16 +441,16 @@ class WorkerProfileScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 32),
 
-          _sectionHeader('Contact Information', theme),
+          _sectionHeader(AppLocalizations.of(context)!.contactInformation, theme),
           const SizedBox(height: 12),
-          _contactTile(Icons.location_on_outlined, 'Location', 
+          _contactTile(Icons.location_on_outlined, AppLocalizations.of(context)!.locationLabel, 
             worker.subLocation != null && worker.subLocation!.isNotEmpty 
               ? '${worker.subLocation}, ${worker.location}' 
-              : (worker.location.isNotEmpty ? worker.location : 'Not set'), 
+              : (worker.location.isNotEmpty ? worker.location : AppLocalizations.of(context)!.notSet), 
             theme, context),
           if (worker.referralCode != null && worker.referralCode!.isNotEmpty) ...[
             const SizedBox(height: 16),
-            _contactTile(Icons.qr_code_rounded, 'Referral Code', 
+            _contactTile(Icons.qr_code_rounded, AppLocalizations.of(context)!.referralCodeLabel, 
               worker.referralCode!, 
               theme, context,
               isReferral: true,
@@ -453,7 +474,7 @@ class WorkerProfileScreen extends ConsumerWidget {
                     Icon(Icons.description_outlined, size: 40, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3)),
                     const SizedBox(height: 12),
                     Text(
-                      'No documents uploaded yet',
+                      AppLocalizations.of(context)!.noDocumentsUploadedYet,
                       style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13),
                     ),
                   ],

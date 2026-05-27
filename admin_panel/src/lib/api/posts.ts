@@ -145,6 +145,12 @@ import { createPersonalNotification } from "./users";
 export const updatePostStatus = async (postId: string, data: Partial<PostData>, ownerUid?: string) => {
   try {
     const postRef = doc(db, "posts", postId);
+    const postSnap = await getDoc(postRef);
+    let postTextSnippet = "your post";
+    if (postSnap.exists() && postSnap.data().text) {
+      postTextSnippet = `"${postSnap.data().text.substring(0, 30)}..."`;
+    }
+
     await updateDoc(postRef, data);
 
     if (ownerUid) {
@@ -152,15 +158,17 @@ export const updatePostStatus = async (postId: string, data: Partial<PostData>, 
         await createPersonalNotification(
           ownerUid,
           "Post Approved ✅",
-          "Your community post has been reviewed and is now live for everyone to see!",
-          "success"
+          `Your community post ${postTextSnippet} has been reviewed and is now live!`,
+          "post_approved",
+          { postId }
         );
       } else if (data.status === 'rejected') {
         await createPersonalNotification(
           ownerUid,
           "Post Rejected ❌",
-          "Your post was rejected by the moderator. Please ensure it follows community guidelines.",
-          "error"
+          `Your post ${postTextSnippet} was rejected by the moderator. Please ensure it follows guidelines.`,
+          "error",
+          { postId }
         );
       }
 
@@ -168,15 +176,17 @@ export const updatePostStatus = async (postId: string, data: Partial<PostData>, 
         await createPersonalNotification(
           ownerUid,
           "Post Restored 👁️",
-          "Your post is now visible again on the community feed.",
-          "success"
+          `Your post ${postTextSnippet} is now visible again on the community feed.`,
+          "success",
+          { postId }
         );
       } else if (data.isHidden === true) {
          await createPersonalNotification(
           ownerUid,
           "Post Hidden 👁️",
-          "One of your posts has been hidden by the moderator. Please review our community guidelines.",
-          "warning"
+          `Your post ${postTextSnippet} has been hidden by the moderator. Please review our guidelines.`,
+          "warning",
+          { postId }
         );
       }
     }
@@ -190,13 +200,19 @@ export const updatePostStatus = async (postId: string, data: Partial<PostData>, 
 export const deletePostPermanently = async (postId: string, ownerUid?: string) => {
   try {
     const postRef = doc(db, "posts", postId);
+    const postSnap = await getDoc(postRef);
+    let postTextSnippet = "Your post";
+    if (postSnap.exists() && postSnap.data().text) {
+      postTextSnippet = `Your post "${postSnap.data().text.substring(0, 30)}..."`;
+    }
+
     await deleteDoc(postRef);
     
     if (ownerUid) {
       await createPersonalNotification(
         ownerUid,
         "Post Removed 🗑️",
-        "Your post was removed by the administrator for violating community guidelines.",
+        `${postTextSnippet} was removed by the administrator for violating community guidelines.`,
         "error"
       );
     }
@@ -231,11 +247,13 @@ export const approvePostEdit = async (postId: string, ownerUid?: string) => {
     });
     
     if (ownerUid) {
+      const textSnippet = postData.text ? `"${postData.text.substring(0, 30)}..."` : "your post";
       await createPersonalNotification(
         ownerUid,
         "Edit Approved ✅",
-        "Your changes to your post have been approved and are now live!",
-        "success"
+        `Your changes to ${textSnippet} have been approved and are now live!`,
+        "post_approved",
+        { postId }
       );
     }
     return true;
@@ -248,6 +266,12 @@ export const approvePostEdit = async (postId: string, ownerUid?: string) => {
 export const rejectPostEdit = async (postId: string, ownerUid?: string) => {
   try {
     const postRef = doc(db, "posts", postId);
+    const postSnap = await getDoc(postRef);
+    let postTextSnippet = "your post";
+    if (postSnap.exists() && postSnap.data().text) {
+      postTextSnippet = `"${postSnap.data().text.substring(0, 30)}..."`;
+    }
+
     await updateDoc(postRef, {
       pendingEdit: null,
       hasPendingEdit: false
@@ -257,8 +281,9 @@ export const rejectPostEdit = async (postId: string, ownerUid?: string) => {
       await createPersonalNotification(
         ownerUid,
         "Edit Rejected ❌",
-        "Your proposed changes to your post were rejected by the moderator.",
-        "error"
+        `Your proposed changes to ${postTextSnippet} were rejected by the moderator.`,
+        "error",
+        { postId }
       );
     }
     return true;

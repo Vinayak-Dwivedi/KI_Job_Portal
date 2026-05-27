@@ -15,7 +15,10 @@ app.use(cors());
 app.use(express.json());
 
 const privacyRoutes = require('./routes/privacy.routes');
+const referralRoutes = require('./routes/referral.routes');
+
 app.use('/api', privacyRoutes);
+app.use('/api', referralRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

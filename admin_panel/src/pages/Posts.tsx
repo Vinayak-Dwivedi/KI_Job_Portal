@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { QueryDocumentSnapshot } from "firebase/firestore";
-import { Search, Loader2, Eye, EyeOff, Trash2, Download, MessageSquare, Heart, ImageIcon, Check, X, Calendar, Filter, MapPin, Edit3, ArrowRight } from "lucide-react";
+import { Search, Loader2, Eye, EyeOff, Trash2, Download, MessageSquare, Heart, ImageIcon, Check, X, Calendar, Filter, MapPin, Edit3 } from "lucide-react";
 import { fetchPosts, updatePostStatus, deletePostPermanently, approvePostEdit, rejectPostEdit, type PostData } from "@/lib/api/posts";
 import { exportToPDF } from "@/lib/exportUtils";
 import { Button } from "@/components/ui/button";

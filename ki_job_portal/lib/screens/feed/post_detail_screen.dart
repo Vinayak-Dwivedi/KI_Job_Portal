@@ -40,7 +40,14 @@ class PostDetailScreen extends ConsumerWidget {
             ),
             child: Icon(Icons.arrow_back_rounded, color: theme.colorScheme.onSurface, size: 20),
           ),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              final role = auth?.role ?? 'worker';
+              context.go(role == 'employer' ? '/employer/dashboard' : '/worker/dashboard');
+            }
+          },
         ),
         actions: [
           IconButton(
@@ -175,6 +182,58 @@ class PostDetailScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (post['isShared'] == true) ...[
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 16,
+                                    backgroundImage: (post['sharedByUserPhotoUrl'] != null && post['sharedByUserPhotoUrl'].toString().isNotEmpty)
+                                        ? NetworkImage(post['sharedByUserPhotoUrl'])
+                                        : null,
+                                    child: (post['sharedByUserPhotoUrl'] == null || post['sharedByUserPhotoUrl'].toString().isEmpty)
+                                        ? const Icon(Icons.person, size: 16)
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      '${post['sharedByUserName'] ?? 'Someone'} shared this',
+                                      style: TextStyle(
+                                        color: theme.colorScheme.onSurface,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(Icons.repeat_rounded, color: theme.colorScheme.primary, size: 18),
+                                ],
+                              ),
+                              if (post['shareCaption'] != null && post['shareCaption'].toString().trim().isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                Text(
+                                  post['shareCaption'],
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onSurface.withOpacity(0.9),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
                       // User Info & Badges
                       Row(
                         children: [
@@ -326,7 +385,18 @@ class PostDetailScreen extends ConsumerWidget {
                                         ),
                                         const SizedBox(height: 6),
                                         Text(
-                                          post['location'] ?? 'Global',
+                                          () {
+                                            final rawLoc = post['location'];
+                                            final String location = rawLoc is Map
+                                                ? (rawLoc['address'] ?? '')
+                                                : (rawLoc?.toString() ?? '');
+                                            final String? subLocation = rawLoc is Map
+                                                ? (rawLoc['subLocation'] ?? post['subLocation'])
+                                                : post['subLocation'];
+                                            return (subLocation != null && subLocation.isNotEmpty) 
+                                                ? '$location ($subLocation)' 
+                                                : (location.isNotEmpty ? location : 'Global');
+                                          }(),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                           style: GoogleFonts.plusJakartaSans(

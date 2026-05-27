@@ -57,6 +57,11 @@ class PostService {
     String? eventTitle,
     String visibility = 'public',
     bool? isFeatured,
+    String? category,
+    String? jobCategory,
+    String? duration,
+    String? workersNeeded,
+    String? jobType,
   }) async {
     List<Map<String, String>> media = [];
     String? firstImageUrl;
@@ -73,6 +78,7 @@ class PostService {
 
     final postRef = await _firestore.collection('posts').add({
       'uid': uid,
+      'userId': uid, // Write both to be compliant with rules checking either!
       'name': name,
       'role': role,
       'text': text,
@@ -88,6 +94,7 @@ class PostService {
       if (jobSalary != null) 'jobSalary': jobSalary,
       if (jobExperience != null) 'jobExperience': jobExperience,
       if (jobSkills != null) 'jobSkills': jobSkills,
+      if (jobSkills != null) 'skills': jobSkills, // Copy skills for search matches
       if (subLocation != null) 'subLocation': subLocation,
       if (companyName != null) 'companyName': companyName,
       if (eventDate != null) 'eventDate': Timestamp.fromDate(eventDate),
@@ -102,6 +109,11 @@ class PostService {
       'createdAt': FieldValue.serverTimestamp(),
       'isFeatured': isFeatured ?? false,
       if (isFeatured == true) 'featuredUntil': Timestamp.fromDate(DateTime.now().add(const Duration(days: 1))),
+      if (category != null) 'category': category,
+      if (category != null || jobCategory != null) 'jobCategory': jobCategory ?? category,
+      if (duration != null) 'duration': duration,
+      if (workersNeeded != null) 'workersNeeded': workersNeeded,
+      if (jobType != null) 'jobType': jobType,
     });
 
     // 🔔 Notify Followers
@@ -399,9 +411,32 @@ class PostService {
 
     final batch = _firestore.batch();
     
+    // Get original post to find the owner
+    final originalPostDoc = await _firestore.collection('posts').doc(originalPostId).get();
+    String? postOwnerUid;
+    if (originalPostDoc.exists) {
+      postOwnerUid = originalPostDoc.data()?['uid'];
+    }
+    
     // Delete all shared instances (should usually be just 1, but just in case)
     for (var doc in sharedPostQuery.docs) {
+      final sharedPostId = doc.id;
       batch.delete(doc.reference);
+      
+      // Also delete the share notification for this shared post
+      if (postOwnerUid != null) {
+        final notifQuery = await _firestore
+            .collection('users')
+            .doc(postOwnerUid)
+            .collection('notifications')
+            .where('type', isEqualTo: 'post_share')
+            .where('postId', isEqualTo: sharedPostId)
+            .where('actorUid', isEqualTo: sharerUid)
+            .get();
+        for (var notifDoc in notifQuery.docs) {
+          batch.delete(notifDoc.reference);
+        }
+      }
     }
 
     // Decrement shares counter on the original post
@@ -502,6 +537,34 @@ class PostService {
       throw Exception('Daily application limit reached for your plan. Upgrade for more.');
     }
     
+    // Get post details for employer ID and title
+    final postDoc = await _firestore.collection('posts').doc(postId).get();
+    if (!postDoc.exists) throw Exception('Job post not found.');
+    final postData = postDoc.data()!;
+    final employerId = postData['uid'] ?? '';
+    final jobTitle = postData['jobTitle'] ?? postData['title'] ?? 'Job';
+
+    // Get worker details from their profile to ensure complete info
+    final userSnap = await _firestore.collection('users').doc(workerUid).get();
+    final userData = userSnap.exists ? userSnap.data()! : {};
+    final workerName = workerData['name'] ?? userData['name'] ?? 'Worker';
+    final workerPhone = workerData['phone'] ?? userData['phone'] ?? '';
+    final workerImageUrl = workerData['profilePhotoUrl'] ?? userData['profilePhotoUrl'] ?? '';
+
+    final appsRef = _firestore.collection('applications').doc();
+
+    final applicationData = {
+      'jobId': postId,
+      'employerId': employerId,
+      'workerId': workerUid,
+      'workerName': workerName,
+      'workerPhone': workerPhone,
+      'workerImageUrl': workerImageUrl,
+      'status': 'pending',
+      'appliedAt': FieldValue.serverTimestamp(),
+    };
+
+    // 1. Create sub-collection application doc
     await _firestore
         .collection('posts')
         .doc(postId)
@@ -510,9 +573,36 @@ class PostService {
         .set({
       ...workerData,
       'uid': workerUid,
-      'status': 'pending', // pending, shortlisted, rejected
+      'status': 'pending',
       'appliedAt': FieldValue.serverTimestamp(),
     });
+
+    // 2. Create top-level application doc for search and status sync
+    await appsRef.set(applicationData);
+
+    // 3. Update applicantCount
+    await _firestore.collection('posts').doc(postId).update({
+      'applicantCount': FieldValue.increment(1),
+    });
+
+    // 4. Notify Employer
+    if (employerId.isNotEmpty) {
+      final employerNotifRef = _firestore
+          .collection('users')
+          .doc(employerId)
+          .collection('notifications')
+          .doc();
+      
+      await employerNotifRef.set({
+        'title': 'New Job Application',
+        'body': '$workerName has applied for your job "$jobTitle".',
+        'type': 'application',
+        'jobId': postId,
+        'actorUid': workerUid,
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
   }
 
   static Future<void> updateApplicationStatus(String postId, String workerUid, String newStatus) async {
@@ -544,6 +634,51 @@ class PostService {
       }
     } catch (e) {
       debugPrint("Error syncing application status: $e");
+    }
+
+    // 3. Send Notification to Worker
+    try {
+      final postDoc = await _firestore.collection('posts').doc(postId).get();
+      if (postDoc.exists) {
+        final postData = postDoc.data()!;
+        final jobTitle = postData['jobTitle'] ?? postData['title'] ?? 'Job';
+        final employerName = postData['employerName'] ?? postData['name'] ?? 'Employer';
+        final employerUid = postData['uid'] ?? '';
+
+        String title = 'Application Update';
+        String body = 'Your application status has been updated.';
+        if (newStatus == 'shortlisted') {
+          title = 'Shortlisted! 🎉';
+          body = 'Congratulations! $employerName has shortlisted you for "$jobTitle".';
+        } else if (newStatus == 'hired') {
+          title = 'Hired! 🌟';
+          body = 'Fantastic news! You have been hired by $employerName for "$jobTitle".';
+        } else if (newStatus == 'rejected') {
+          title = 'Application Update';
+          body = 'Thank you for applying. $employerName has updated your application status for "$jobTitle".';
+        } else if (newStatus == 'pending') {
+          title = 'Application Under Review';
+          body = 'Your application for "$jobTitle" is under review again.';
+        }
+
+        final workerNotifRef = _firestore
+            .collection('users')
+            .doc(workerUid)
+            .collection('notifications')
+            .doc();
+
+        await workerNotifRef.set({
+          'title': title,
+          'body': body,
+          'type': 'application',
+          'jobId': postId,
+          'actorUid': employerUid,
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      debugPrint("Error sending application status notification: $e");
     }
   }
 

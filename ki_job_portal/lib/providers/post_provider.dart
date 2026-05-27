@@ -123,8 +123,9 @@ bool _canViewPost(DocumentSnapshot doc, List<String> blockedUids, List<String> h
   if (status != 'approved' && uid != currentUid) return false;
   
   if (uid != currentUid) {
-     if (visibility == 'employers' && currentRole != 'employer') return false;
-     if (visibility == 'workers' && currentRole != 'worker') return false;
+     // Visibility check removed to allow workers and employers to discover each other
+     // if (visibility == 'employers' && currentRole != 'employer') return false;
+     // if (visibility == 'workers' && currentRole != 'worker') return false;
   }
 
   // If someone else shared my post, don't show the shared version in my feed to avoid duplicate clutter
@@ -345,6 +346,15 @@ final jobFeedProvider = StreamProvider.autoDispose((ref) {
             'isJobPost': true,
             'jobTitle': data['jobTitle'] ?? 'Job Posting',
             'jobSalary': data['jobSalary'] ?? 'Negotiable',
+            'jobExperience': data['jobExperience'] ?? data['experience'] ?? '',
+            'jobSkills': data['jobSkills'] ?? data['skills'] ?? '',
+            'skills': data['skills'] ?? data['jobSkills'] ?? '',
+            'jobCategory': data['jobCategory'] ?? data['category'] ?? '',
+            'category': data['category'] ?? data['jobCategory'] ?? '',
+            'jobType': data['jobType'] ?? '',
+            'subLocation': data['subLocation'] ?? '',
+            'duration': data['duration'] ?? '',
+            'workersNeeded': data['workersNeeded'] ?? '',
             'isFeatured': data['isFeatured'] ?? false,
             'hiringStatus': data['hiringStatus'] ?? 'active',
             'likes': data['likes'] ?? 0,
@@ -426,6 +436,15 @@ final employerJobsProvider = StreamProvider.autoDispose.family<List<Map<String, 
             'isJobPost': true,
             'jobTitle': data['jobTitle'] ?? 'Job Posting',
             'jobSalary': data['jobSalary'] ?? 'Negotiable',
+            'jobExperience': data['jobExperience'] ?? data['experience'] ?? '',
+            'jobSkills': data['jobSkills'] ?? data['skills'] ?? '',
+            'skills': data['skills'] ?? data['jobSkills'] ?? '',
+            'jobCategory': data['jobCategory'] ?? data['category'] ?? '',
+            'category': data['category'] ?? data['jobCategory'] ?? '',
+            'jobType': data['jobType'] ?? '',
+            'subLocation': data['subLocation'] ?? '',
+            'duration': data['duration'] ?? '',
+            'workersNeeded': data['workersNeeded'] ?? '',
             'hiringStatus': data['hiringStatus'] ?? 'active',
             'isFeatured': data['isFeatured'] ?? false,
             'featuredUntil': data['featuredUntil'],
@@ -480,6 +499,15 @@ final unifiedFeedProvider = StreamProvider.autoDispose((ref) {
             'isAvailabilityPost': data['isAvailabilityPost'] ?? false,
             'jobTitle': data['jobTitle'] ?? 'Job Posting',
             'jobSalary': data['jobSalary'] ?? 'Negotiable',
+            'jobExperience': data['jobExperience'] ?? data['experience'] ?? '',
+            'jobSkills': data['jobSkills'] ?? data['skills'] ?? '',
+            'skills': data['skills'] ?? data['jobSkills'] ?? '',
+            'jobCategory': data['jobCategory'] ?? data['category'] ?? '',
+            'category': data['category'] ?? data['jobCategory'] ?? '',
+            'jobType': data['jobType'] ?? '',
+            'subLocation': data['subLocation'] ?? '',
+            'duration': data['duration'] ?? '',
+            'workersNeeded': data['workersNeeded'] ?? '',
             'likes': data['likes'] ?? 0,
             'comments': data['comments'] ?? 0,
             'shares': data['shares'] ?? 0,

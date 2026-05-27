@@ -120,6 +120,7 @@ class _EmployerDashboardScreenState extends ConsumerState<EmployerDashboardScree
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           GestureDetector(
                             onTap: () => context.push('/profile/employer/${employer.uid}'),
@@ -148,34 +149,41 @@ class _EmployerDashboardScreenState extends ConsumerState<EmployerDashboardScree
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
                                   '${AppLocalizations.of(context)!.namaste}, ${employer.contactName.split(' ')[0]}',
                                   style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 22,
+                                    fontSize: 18,
                                     fontWeight: FontWeight.w800,
                                     color: theme.colorScheme.onSurface,
                                     letterSpacing: -0.5,
                                   ),
                                   overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
                                 ),
+                                const SizedBox(height: 2),
                                 Text(
                                   '${AppLocalizations.of(context)!.hirer} • ${employer.hirerSubType}',
                                   style: GoogleFonts.plusJakartaSans(color: theme.colorScheme.onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
                                 ),
                               ],
                             ),
                           ),
+                          const SizedBox(width: 12),
                           _buildHeaderIcon(context, Icons.search_rounded, () => context.push('/search')),
                           const SizedBox(width: 12),
                           Consumer(
                             builder: (context, ref, child) {
                               final unreadCount = ref.watch(unreadNotificationsCountProvider).value ?? 0;
-                              return Badge(
-                                label: unreadCount > 0 ? Text('$unreadCount') : null,
-                                isLabelVisible: unreadCount > 0,
-                                backgroundColor: Colors.red,
-                                child: _buildHeaderIcon(context, Icons.notifications_outlined, () => context.push('/notifications')),
+                              return _buildHeaderIcon(
+                                context,
+                                Icons.notifications_outlined,
+                                () => context.push('/notifications'),
+                                badgeCount: unreadCount,
                               );
                             },
                           ),
@@ -223,7 +231,20 @@ class _EmployerDashboardScreenState extends ConsumerState<EmployerDashboardScree
                             label: AppLocalizations.of(context)!.community,
                             icon: Icons.groups_2_rounded,
                             color: const Color(0xFFEC4899),
-                            onTap: () => context.push('/feed/create'),
+                            onTap: () {
+                              ref.read(feedTypeFilterProvider.notifier).state = FeedType.community;
+                              _scrollController.animateTo(
+                                520.0,
+                                duration: const Duration(milliseconds: 600),
+                                curve: Curves.easeInOutCubic,
+                              );
+                            },
+                          ),
+                          _ActionCard(
+                            label: AppLocalizations.of(context)!.subscriptionPlans,
+                            icon: Icons.card_membership_rounded,
+                            color: Colors.deepPurpleAccent,
+                            onTap: () => context.push('/subscription-plans'),
                           ),
                         ],
                       ),
@@ -351,18 +372,59 @@ class _EmployerDashboardScreenState extends ConsumerState<EmployerDashboardScree
     );
   }
 
-  Widget _buildHeaderIcon(BuildContext context, IconData icon, VoidCallback onTap) {
+  Widget _buildHeaderIcon(BuildContext context, IconData icon, VoidCallback onTap, {int badgeCount = 0}) {
     final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
-      ),
-      child: IconButton(
-        onPressed: onTap,
-        icon: Icon(icon, color: theme.colorScheme.primary, size: 22),
-      ),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.colorScheme.primary.withOpacity(0.1)),
+              ),
+              child: Icon(icon, color: theme.colorScheme.primary, size: 20),
+            ),
+          ),
+        ),
+        if (badgeCount > 0)
+          Positioned(
+            top: -2,
+            right: -2,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 16,
+                  minHeight: 16,
+                ),
+                child: Center(
+                  child: Text(
+                    '$badgeCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -443,9 +505,13 @@ class _ActionCard extends StatelessWidget {
           children: [
             Icon(icon, color: color, size: 22),
             const SizedBox(width: 12),
-            Text(
-              label,
-              style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface),
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),

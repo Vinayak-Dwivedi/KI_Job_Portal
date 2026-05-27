@@ -156,3 +156,56 @@ final liveProfileProvider = StreamProvider.family<Map<String, dynamic>?, String>
         return data;
       });
 });
+
+final suggestedWorkersProvider = StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+  return FirebaseFirestore.instance
+      .collection('users')
+      .where('role', isEqualTo: 'worker')
+      .limit(20) // Get up to 20 to shuffle or show a variety
+      .snapshots()
+      .map((snap) {
+        final docs = snap.docs.map((d) {
+          final data = d.data();
+          data['id'] = d.id;
+          data['profilePhotoUrl'] = _normalizePhoto(data);
+          return data;
+        }).toList();
+        docs.shuffle();
+        return docs.take(10).toList(); // Show 10 random
+      });
+});
+
+final suggestedEmployersProvider = StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+  return FirebaseFirestore.instance
+      .collection('users')
+      .where('role', isEqualTo: 'employer')
+      .limit(20)
+      .snapshots()
+      .map((snap) {
+        final docs = snap.docs.map((d) {
+          final data = d.data();
+          data['id'] = d.id;
+          data['profilePhotoUrl'] = _normalizePhoto(data);
+          return data;
+        }).toList();
+        docs.shuffle();
+        return docs.take(10).toList();
+      });
+});
+
+final peopleYouMayKnowProvider = StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+  return FirebaseFirestore.instance
+      .collection('users')
+      .limit(30)
+      .snapshots()
+      .map((snap) {
+        final docs = snap.docs.map((d) {
+          final data = d.data();
+          data['id'] = d.id;
+          data['profilePhotoUrl'] = _normalizePhoto(data);
+          return data;
+        }).toList();
+        docs.shuffle();
+        return docs.take(15).toList();
+      });
+});

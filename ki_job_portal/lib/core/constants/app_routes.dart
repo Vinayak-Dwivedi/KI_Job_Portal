@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../screens/firebase_test_screen.dart';
 import '../../providers/auth_provider.dart';
@@ -25,6 +26,7 @@ import '../../screens/employer/employer_profile_screen.dart';
 import '../../screens/employer/employer_workers_screen.dart';
 import '../../screens/employer/employer_my_jobs_screen.dart';
 import '../../screens/employer/create_job_screen.dart';
+import '../../screens/employer/employer_community_screen.dart';
 import '../../screens/worker/job_detail_screen.dart';
 import '../../screens/feed/feed_screen.dart';
 import '../../screens/feed/create_post_screen.dart';
@@ -87,10 +89,20 @@ class _WorkerShellState extends ConsumerState<WorkerShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: widget.child,
-      bottomNavigationBar: KIBottomNavBar(currentIndex: widget.currentIndex),
+    final canPop = widget.currentIndex == 0;
+    return PopScope(
+      canPop: canPop,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        if (widget.currentIndex != 0) {
+          context.go('/worker/dashboard');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: widget.child,
+        bottomNavigationBar: KIBottomNavBar(currentIndex: widget.currentIndex),
+      ),
     );
   }
 }
@@ -120,10 +132,20 @@ class _EmployerShellState extends ConsumerState<EmployerShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: widget.child,
-      bottomNavigationBar: KIBottomNavBar(currentIndex: widget.currentIndex),
+    final canPop = widget.currentIndex == 0;
+    return PopScope(
+      canPop: canPop,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        if (widget.currentIndex != 0) {
+          context.go('/employer/dashboard');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: widget.child,
+        bottomNavigationBar: KIBottomNavBar(currentIndex: widget.currentIndex),
+      ),
     );
   }
 }
@@ -266,6 +288,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       GoRoute(path: '/employer/create-job', builder: (_, __) => const CreateJobScreen()),
+      GoRoute(path: '/employer/community', builder: (_, __) => const EmployerCommunityScreen()),
 
       // Feed routes
       GoRoute(
@@ -367,6 +390,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/referral', pageBuilder: (context, state) => slideRightPage(state, const ReferralScreen())),
+      GoRoute(
+        path: '/ref/:id',
+        redirect: (context, state) async {
+          final referrerUid = state.pathParameters['id'];
+          if (referrerUid != null && referrerUid.isNotEmpty) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('captured_referrer_uid', referrerUid);
+            await prefs.setInt('referral_capture_time', DateTime.now().millisecondsSinceEpoch);
+            print("🔗 Captured referral UID: $referrerUid");
+          }
+          return '/splash';
+        },
+      ),
     ],
   );
 });

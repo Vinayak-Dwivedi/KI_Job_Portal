@@ -89,7 +89,16 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                   const SizedBox(height: 16),
                   Text('Job not found', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                   const SizedBox(height: 8),
-                  TextButton(onPressed: () => context.pop(), child: const Text('Go Back')),
+                  TextButton(
+                    onPressed: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/worker/dashboard');
+                      }
+                    },
+                    child: const Text('Go Back'),
+                  ),
                 ],
               ),
             );
@@ -149,7 +158,13 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                         ),
                         leading: IconButton(
                           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-                          onPressed: () => context.pop(),
+                          onPressed: () {
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/worker/dashboard');
+                            }
+                          },
                         ),
                       ),
 
@@ -201,9 +216,23 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                                           children: [
                                             const Icon(Icons.location_on_rounded, color: Colors.white54, size: 14),
                                             const SizedBox(width: 4),
-                                            Text(
-                                              job['location']?.toString() ?? 'Global', 
-                                              style: GoogleFonts.plusJakartaSans(color: Colors.white54, fontWeight: FontWeight.w600)
+                                            Flexible(
+                                              child: Text(
+                                                () {
+                                                  final rawLoc = job['location'];
+                                                  final String location = rawLoc is Map
+                                                      ? (rawLoc['address'] ?? '')
+                                                      : (rawLoc?.toString() ?? '');
+                                                  final String? subLocation = rawLoc is Map
+                                                      ? (rawLoc['subLocation'] ?? job['subLocation'])
+                                                      : job['subLocation'];
+                                                  return (subLocation != null && subLocation.isNotEmpty) 
+                                                      ? '$location ($subLocation)' 
+                                                      : (location.isNotEmpty ? location : 'Global');
+                                                }(),
+                                                style: GoogleFonts.plusJakartaSans(color: Colors.white54, fontWeight: FontWeight.w600),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
                                             ),
                                           ],
                                         ),

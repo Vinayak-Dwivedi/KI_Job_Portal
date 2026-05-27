@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/search_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/feed/post_card.dart';
 import '../../core/theme/app_colors.dart';
 
@@ -42,7 +43,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> with SingleTickerPr
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              final role = ref.read(authProvider)?.role ?? 'worker';
+              context.go(role == 'employer' ? '/employer/dashboard' : '/worker/dashboard');
+            }
+          },
         ),
         title: _buildSearchBox(theme),
         actions: [

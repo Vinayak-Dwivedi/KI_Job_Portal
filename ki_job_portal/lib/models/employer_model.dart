@@ -24,6 +24,8 @@ class EmployerModel {
   final DateTime? dateOfBirth;
   final String? referralCode;
   final String? referredBy;
+  final int referralCount;
+  final int totalReferralCredits;
   final double? latitude;
   final double? longitude;
   final bool isFeatured;
@@ -61,6 +63,8 @@ class EmployerModel {
     this.documents = const [],
     this.referralCode,
     this.referredBy,
+    this.referralCount = 0,
+    this.totalReferralCredits = 0,
     this.latitude,
     this.longitude,
     this.isFeatured = false,
@@ -97,6 +101,8 @@ class EmployerModel {
       'documents': documents.map((x) => x.toMap()).toList(),
       'referralCode': referralCode,
       'referredBy': referredBy,
+      'referralCount': referralCount,
+      'totalReferralCredits': totalReferralCredits,
       'latitude': latitude,
       'longitude': longitude,
       'isFeatured': isFeatured,
@@ -155,6 +161,8 @@ class EmployerModel {
           [],
       referralCode: map['referralCode']?.toString(),
       referredBy: map['referredBy']?.toString(),
+      referralCount: int.tryParse(map['referralCount']?.toString() ?? '0') ?? 0,
+      totalReferralCredits: int.tryParse(map['totalReferralCredits']?.toString() ?? '0') ?? 0,
       latitude: double.tryParse(map['latitude']?.toString() ?? ''),
       longitude: double.tryParse(map['longitude']?.toString() ?? ''),
       isFeatured: map['isFeatured'] ?? false,

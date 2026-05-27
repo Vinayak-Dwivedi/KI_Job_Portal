@@ -12,6 +12,7 @@ import 'dart:io';
 import '../../core/services/notification_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../core/services/referral_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
   final String phone;
@@ -163,8 +164,38 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         }
 
         // 🎁 PROCESS REFERRAL
+        String finalReferrerUid = '';
         if (widget.referralCode.isNotEmpty) {
-          await ReferralService.processReferralReward(uid, widget.referralCode);
+          // If manually entered, validate it first (it's a code, not a UID)
+          finalReferrerUid = await ReferralService.validateReferralCode(widget.referralCode) ?? '';
+        } else {
+          // Check for captured UID from deep link
+          final prefs = await SharedPreferences.getInstance();
+          finalReferrerUid = prefs.getString('captured_referrer_uid') ?? '';
+          
+          // Optional: Check validity window (e.g., capture time < 30 days)
+          final captureTime = prefs.getInt('referral_capture_time') ?? 0;
+          if (captureTime > 0) {
+            final now = DateTime.now().millisecondsSinceEpoch;
+            final daysDiff = (now - captureTime) / (1000 * 60 * 60 * 24);
+            
+            // Fetch settings to get validity window
+            final settings = await ReferralService.getReferralSettings();
+            final window = settings['validityWindowDays'] ?? 30;
+            
+            if (daysDiff > window) {
+              print("⚠️ Referral captured more than $window days ago, ignoring.");
+              finalReferrerUid = '';
+            }
+          }
+          
+          // Clear it after consumption
+          await prefs.remove('captured_referrer_uid');
+          await prefs.remove('referral_capture_time');
+        }
+
+        if (finalReferrerUid.isNotEmpty && finalReferrerUid != uid) {
+          await ReferralService.processReferralReward(uid, finalReferrerUid);
         }
 
         // 🎫 SETUP USER'S OWN REFERRAL CODE

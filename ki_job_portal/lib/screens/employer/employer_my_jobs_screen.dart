@@ -188,7 +188,16 @@ class _EmployerJobCard extends ConsumerWidget {
     final bool isFeatured = job['isFeatured'] == true;
     final String title = job['jobTitle']?.toString() ?? 'Job Posting';
     final String company = job['companyName']?.toString() ?? 'Unknown Company';
-    final String location = job['location']?.toString() ?? '';
+    final rawLoc = job['location'];
+    final String baseLocation = rawLoc is Map
+        ? (rawLoc['address'] ?? '')
+        : (rawLoc?.toString() ?? '');
+    final String finalSubLoc = rawLoc is Map
+        ? (rawLoc['subLocation'] ?? job['subLocation'] ?? '')
+        : (job['subLocation']?.toString() ?? '');
+    final String location = finalSubLoc.isNotEmpty 
+        ? "$baseLocation ($finalSubLoc)" 
+        : baseLocation;
     final String salary = job['jobSalary']?.toString() ?? 'Negotiable';
     final String hiringStatus = job['hiringStatus']?.toString() ?? 'active';
     final createdAt = job['createdAt'];

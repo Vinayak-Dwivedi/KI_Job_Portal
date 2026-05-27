@@ -373,6 +373,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tabMyRequests => 'MY REQUESTS';
 
   @override
+  String get tabVisitors => 'VISITORS';
+
+  @override
   String get skills => 'Skills';
 
   @override
@@ -386,6 +389,58 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewAll => 'View All';
+
+  @override
+  String get accountInformation => 'Account Information';
+
+  @override
+  String get contactPerson => 'Contact Person';
+
+  @override
+  String get companyName => 'Company Name';
+
+  @override
+  String get emailAddress => 'Email Address';
+
+  @override
+  String get phoneNumber => 'Phone Number';
+
+  @override
+  String get officeLocation => 'Office Location';
+
+  @override
+  String get viewPublicProfile => 'View Public Profile';
+
+  @override
+  String get aboutCompany => 'About Company';
+
+  @override
+  String get documentsCertifications => 'Documents & Certifications';
+
+  @override
+  String get noDocumentsUploaded => 'No documents uploaded yet';
+
+  @override
+  String get noDescriptionCompany =>
+      'No description provided yet. Add your company profile to attract more professional workers.';
+
+  @override
+  String get whoViewedMyProfile => 'Who viewed my profile?';
+
+  @override
+  String get expertiseAndBio => 'Expertise & Bio';
+
+  @override
+  String get contactInformation => 'Contact Information';
+
+  @override
+  String get locationLabel => 'Location';
+
+  @override
+  String get referralCodeLabel => 'Referral Code';
+
+  @override
+  String get noDocumentsUploadedYet => 'No documents uploaded yet';
 
   @override
   String get noNewJobsAtTheMoment => 'No new jobs at the moment.';
@@ -585,6 +640,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notif_post_share_body => 'Someone shared your post';
+
   @override
   String get listAvailability => 'List Availability';
 
@@ -640,10 +696,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renewPlan => 'Renew Plan';
 
   @override
-  String upgradeTo(String planName) => '⬆ Upgrade to $planName';
+  String upgradeTo(String planName) {
+    return '⬆ Upgrade to $planName';
+  }
 
   @override
-  String creditsCount(int count) => '$count Credits';
+  String creditsCount(int count) {
+    return '$count Credits';
+  }
 
   @override
   String get buyBtn => 'Buy';
@@ -665,5 +725,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noReviewsYet => 'No reviews yet';
+  @override
+  String get noBio => 'No bio provided.';
+
+  @override
+  String get notSet => 'Not set';
 
 }

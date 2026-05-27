@@ -36,6 +36,7 @@ class ApplicationService {
     final appsRef = FirebaseFirestore.instance.collection('applications').doc();
     final subAppsRef = postRef.collection('applications').doc(user.uid);
     final txRef = FirebaseFirestore.instance.collection('contactCredits').doc(user.uid).collection('transactions').doc();
+    final employerNotifRef = FirebaseFirestore.instance.collection('users').doc(employerId).collection('notifications').doc();
 
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       final userSnap = await transaction.get(userRef);
@@ -80,6 +81,17 @@ class ApplicationService {
 
       // 4. Update Job Post
       transaction.update(postRef, {'applicantCount': FieldValue.increment(1)});
+
+      // 5. Notify Employer
+      transaction.set(employerNotifRef, {
+        'title': 'New Job Application',
+        'body': '$workerName has applied for your job "${post['jobTitle'] ?? 'Job'}".',
+        'type': 'application',
+        'jobId': jobId,
+        'actorUid': user.uid,
+        'isRead': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
     });
 
     // 5. Update Local State

@@ -23,6 +23,8 @@ class WorkerModel {
   final DateTime? dateOfBirth;
   final String? referralCode;
   final String? referredBy;
+  final int referralCount;
+  final int totalReferralCredits;
   final double? latitude;
   final double? longitude;
   
@@ -78,6 +80,8 @@ class WorkerModel {
     this.documents = const [],
     this.referralCode,
     this.referredBy,
+    this.referralCount = 0,
+    this.totalReferralCredits = 0,
     this.latitude,
     this.longitude,
   });
@@ -117,6 +121,8 @@ class WorkerModel {
     List<DocumentModel>? documents,
     String? referralCode,
     String? referredBy,
+    int? referralCount,
+    int? totalReferralCredits,
     double? latitude,
     double? longitude,
   }) {
@@ -155,6 +161,8 @@ class WorkerModel {
       documents: documents ?? this.documents,
       referralCode: referralCode ?? this.referralCode,
       referredBy: referredBy ?? this.referredBy,
+      referralCount: referralCount ?? this.referralCount,
+      totalReferralCredits: totalReferralCredits ?? this.totalReferralCredits,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
     );
@@ -194,6 +202,8 @@ class WorkerModel {
       'documents': documents.map((x) => x.toMap()).toList(),
       'referralCode': referralCode,
       'referredBy': referredBy,
+      'referralCount': referralCount,
+      'totalReferralCredits': totalReferralCredits,
       'latitude': latitude,
       'longitude': longitude,
     };
@@ -267,6 +277,8 @@ class WorkerModel {
           [],
       referralCode: map['referralCode']?.toString(),
       referredBy: map['referredBy']?.toString(),
+      referralCount: int.tryParse(map['referralCount']?.toString() ?? '0') ?? 0,
+      totalReferralCredits: int.tryParse(map['totalReferralCredits']?.toString() ?? '0') ?? 0,
       latitude: double.tryParse(map['latitude']?.toString() ?? ''),
       longitude: double.tryParse(map['longitude']?.toString() ?? ''),
     );

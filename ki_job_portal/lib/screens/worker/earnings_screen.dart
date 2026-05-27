@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/services/referral_service.dart';
 
 // Provider that streams credit transaction history
 final _creditTransactionsProvider =
@@ -150,21 +151,29 @@ class EarningsScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: () => context.push('/referral'),
-                      icon: const Icon(Icons.card_giftcard_rounded, size: 18),
-                      label: const Text('REFER & EARN FREE CREDITS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white.withOpacity(0.2),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        side: BorderSide(color: Colors.white.withOpacity(0.3)),
-                      ),
-                    ),
+                  FutureBuilder<Map<String, dynamic>>(
+                    future: ReferralService.getReferralSettings(),
+                    builder: (context, snapshot) {
+                      final isActive = snapshot.data?['isActive'] ?? true;
+                      if (!isActive) return const SizedBox.shrink();
+                      
+                      return SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: () => context.push('/referral'),
+                          icon: const Icon(Icons.card_giftcard_rounded, size: 18),
+                          label: const Text('REFER & EARN FREE CREDITS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          ),
+                        ),
+                      );
+                    }
                   ),
                 ],
               ),

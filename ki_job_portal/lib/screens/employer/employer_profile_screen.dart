@@ -56,16 +56,12 @@ class EmployerProfileScreen extends ConsumerWidget {
                 pinned: true,
                 backgroundColor: theme.scaffoldBackgroundColor,
                 elevation: 0,
-                leading: IconButton(
-                  icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
-                  onPressed: () {
-                    if (context.canPop()) {
-                      context.pop();
-                    } else {
-                      context.go('/employer/dashboard');
-                    }
-                  },
-                ),
+                leading: context.canPop()
+                    ? IconButton(
+                        icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
+                        onPressed: () => context.pop(),
+                      )
+                    : null,
                 actions: [
                   IconButton(
                     icon: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded, color: theme.colorScheme.onSurface),
@@ -213,8 +209,26 @@ class EmployerProfileScreen extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      if (employer.isFeatured == false) ...[
+                      if (!employer.isVerified) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () => context.push('/settings/verification'),
+                            icon: const Icon(Icons.verified_user_outlined, color: Colors.blue),
+                            label: const Text('GET VERIFIED', style: TextStyle(fontWeight: FontWeight.w900)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.withOpacity(0.1),
+                              foregroundColor: Colors.blue[800],
+                              side: BorderSide(color: Colors.blue.withOpacity(0.5)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              elevation: 0,
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 12),
+                      ],
+                      if (employer.isFeatured == false) ...[
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
@@ -334,12 +348,12 @@ class EmployerProfileScreen extends ConsumerWidget {
                     indicatorColor: theme.colorScheme.primary,
                     indicatorWeight: 3,
                     labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
-                    tabs: const [
-                      Tab(text: "ABOUT"),
-                      Tab(text: "STATS"),
-                      Tab(text: "POSTS"),
-                      Tab(text: "SAVED"),
-                      Tab(text: "VISITORS"),
+                    tabs: [
+                      Tab(text: AppLocalizations.of(context)!.tabAbout.toUpperCase()),
+                      Tab(text: AppLocalizations.of(context)!.tabStats.toUpperCase()),
+                      Tab(text: AppLocalizations.of(context)!.tabPosts.toUpperCase()),
+                      Tab(text: AppLocalizations.of(context)!.tabSaved.toUpperCase()),
+                      Tab(text: AppLocalizations.of(context)!.tabVisitors.toUpperCase()),
                     ],
                   ),
                   theme.scaffoldBackgroundColor,
@@ -362,11 +376,12 @@ class EmployerProfileScreen extends ConsumerWidget {
   }
 
   Widget _buildAboutTab(employer, String companyName, String officeAddress, String bio, ThemeData theme, BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          _SectionHeader(title: 'Account Information', theme: theme),
+          _SectionHeader(title: l10n.accountInformation, theme: theme),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -378,22 +393,22 @@ class EmployerProfileScreen extends ConsumerWidget {
             ),
             child: Column(
               children: [
-                _buildAccountRow(Icons.person_outline_rounded, 'Contact Person', employer.contactPersonName, theme, context),
+                _buildAccountRow(Icons.person_outline_rounded, l10n.contactPerson, employer.contactPersonName, theme, context),
                 const Divider(height: 24),
-                _buildAccountRow(Icons.business_rounded, 'Company Name', companyName, theme, context),
+                _buildAccountRow(Icons.business_rounded, l10n.companyName, companyName, theme, context),
                 const Divider(height: 24),
-                _buildAccountRow(Icons.email_outlined, 'Email Address', employer.email ?? 'Not provided', theme, context),
+                _buildAccountRow(Icons.email_outlined, l10n.emailAddress, employer.email ?? 'Not provided', theme, context),
                 const Divider(height: 24),
-                _buildAccountRow(Icons.phone_android_rounded, 'Phone Number', employer.phone, theme, context),
+                _buildAccountRow(Icons.phone_android_rounded, l10n.phoneNumber, employer.phone, theme, context),
                 const Divider(height: 24),
-                _buildAccountRow(Icons.location_on_outlined, 'Office Location', 
+                _buildAccountRow(Icons.location_on_outlined, l10n.officeLocation, 
                   employer.subLocation != null && employer.subLocation!.isNotEmpty 
                     ? '${employer.subLocation}, ${officeAddress}' 
                     : officeAddress, 
                   theme, context),
                 if (employer.referralCode != null && employer.referralCode!.isNotEmpty) ...[
                   const Divider(height: 24),
-                  _buildAccountRow(Icons.qr_code_rounded, 'Referral Code', 
+                  _buildAccountRow(Icons.qr_code_rounded, l10n.referralCodeLabel, 
                     employer.referralCode!, 
                     theme, context,
                     isReferral: true,
@@ -415,7 +430,7 @@ class EmployerProfileScreen extends ConsumerWidget {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     elevation: 0,
                   ),
-                  child: const Text('View Public Profile', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  child: Text(l10n.viewPublicProfile, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -428,13 +443,13 @@ class EmployerProfileScreen extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  child: const Text('Edit Profile', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  child: Text(l10n.editProfile, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 32),
-          _SectionHeader(title: 'About Company', theme: theme),
+          _SectionHeader(title: l10n.aboutCompany, theme: theme),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -445,12 +460,12 @@ class EmployerProfileScreen extends ConsumerWidget {
               border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
             ),
             child: Text(
-              bio.isNotEmpty ? bio : 'No description provided yet. Add your company profile to attract more professional workers.',
+              bio.isNotEmpty ? bio : l10n.noDescriptionCompany,
               style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 14, height: 1.6),
             ),
           ),
           const SizedBox(height: 32),
-          _SectionHeader(title: 'Documents & Certifications', theme: theme),
+          _SectionHeader(title: l10n.documentsCertifications, theme: theme),
           const SizedBox(height: 12),
           if (employer.documents.isEmpty)
             Container(
@@ -461,7 +476,7 @@ class EmployerProfileScreen extends ConsumerWidget {
                 border: Border.all(color: theme.dividerColor.withOpacity(0.05)),
               ),
               child: Center(
-                child: Text('No documents uploaded yet', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13)),
+                child: Text(l10n.noDocumentsUploaded, style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13)),
               ),
             )
           else

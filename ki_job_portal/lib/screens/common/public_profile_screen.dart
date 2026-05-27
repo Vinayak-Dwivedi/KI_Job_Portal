@@ -189,32 +189,71 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
     String workerUid,
   ) async {
     final employer = ref.read(employerProvider);
-    final jobsAsync = ref.read(employerJobsProvider(auth.uid));
-    final jobs = jobsAsync.asData?.value ?? [];
+
+    // Show a loading indicator dialog while fetching jobs
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (loadingCtx) => const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ),
+    );
+
+    List<Map<String, dynamic>> jobs = [];
+    try {
+      final jobsSnap = await FirebaseFirestore.instance
+          .collection('posts')
+          .where('isJobPost', isEqualTo: true)
+          .where('uid', isEqualTo: auth.uid)
+          .get();
+
+      if (context.mounted) {
+        Navigator.pop(context); // Dismiss loading dialog
+      }
+
+      jobs = jobsSnap.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // Dismiss loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to fetch jobs: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
 
     if (jobs.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Post a job first before sending invitations.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Post a job first before sending invitations.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
       return;
     }
 
     // Filter only active jobs
     final activeJobs = jobs
-        .where((j) => (j['hiringStatus'] ?? 'active') == 'active')
+        .where((j) => (j['hiringStatus'] ?? j['status'] ?? 'active') == 'active')
         .toList();
     if (activeJobs.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No active job posts to invite for.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No active job posts to invite for.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
       return;
     }
+
+    if (!context.mounted) return;
 
     showModalBottomSheet(
       context: context,
@@ -273,7 +312,12 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
                   ),
                 ),
                 subtitle: Text(
-                  job['location']?.toString() ?? '',
+                  () {
+                    final rawLoc = job['location'];
+                    return rawLoc is Map
+                        ? (rawLoc['address'] ?? '')
+                        : (rawLoc?.toString() ?? '');
+                  }(),
                   style: const TextStyle(
                     color: AppColors.darkOnSurfaceVariant,
                     fontSize: 12,
@@ -389,7 +433,14 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Theme.of(context).iconTheme.color ?? Colors.white),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              final role = auth?.role ?? 'worker';
+              context.go(role == 'employer' ? '/employer/dashboard' : '/worker/dashboard');
+            }
+          },
         ),
         actions: [
           IconButton(

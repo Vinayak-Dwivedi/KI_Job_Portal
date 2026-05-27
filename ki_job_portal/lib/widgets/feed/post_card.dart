@@ -458,8 +458,13 @@ class _PostCardState extends ConsumerState<PostCard> {
     }
     final String? profilePhotoUrl = post['profilePhotoUrl'];
     final bool isVerified = post['isVerified'] ?? false;
-    final String location = post['location'] ?? '';
-    final String? subLocation = post['subLocation'];
+    final rawLoc = post['location'];
+    final String location = rawLoc is Map
+        ? (rawLoc['address'] ?? '')
+        : (rawLoc?.toString() ?? '');
+    final String? subLocation = rawLoc is Map
+        ? (rawLoc['subLocation'] ?? post['subLocation'])
+        : post['subLocation'];
     final String locationDisplay = (subLocation != null && subLocation.isNotEmpty) 
         ? '$location ($subLocation)' 
         : location;
